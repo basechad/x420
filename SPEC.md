@@ -35,6 +35,54 @@ blocker to publishing the game.
 
 ---
 
+## 1.1 What is normative, and what is yours to choose
+
+A standard is adopted when the default path requires no decisions and adopting it does not
+mean adopting someone else's economics. x420 therefore has three layers, and only two of them
+bind you.
+
+| Layer | Status | Why |
+|---|---|---|
+| **Record format** (§3) | **normative** | apps cannot read each other's records otherwise |
+| **Split resolution** (§3.5) | **normative** | two implementations disagreeing misroutes real money |
+| **Application policy** | **yours** | what a consumer *does* with resolved splits is its own business |
+
+**Resolution must be normative** because the failure is silent and expensive. The Python
+reference and the TypeScript port already diverged once over how dust is assigned on a tie —
+same input, different payee. Shared conformance vectors exist so that disagreement fails CI
+rather than a payout.
+
+**Policy must not be normative**, or the standard only suits one business. chadpad routes a
+launch's creator fee stream through a `LineageSplitter` and leaves the launcher
+`10000 − royalty_bps`. That is chadpad's choice, not a rule of x420. Another consumer might
+cap the royalty, ignore it, apply it to subscription revenue, or use the lineage purely for
+display and never move money at all.
+
+### `royalty_bps` states terms, it does not enforce them
+
+Read `license.royalty_bps` as **what the creator asks for**, not what the protocol guarantees.
+Resolution computes what that request implies; honouring it is a consumer decision.
+
+The distinction matters for adoption. "Use our identity scheme" is a small ask. "Use our
+identity scheme and our revenue model" is a large one, and most of the value — one identity
+across every app, a lineage graph that survives app boundaries — is in the small ask.
+
+### Conformance
+
+An implementation is x420-conformant if it:
+
+1. derives ids as in §2.1 — SHA-256 of the served bytes, no chain segment;
+2. parses and emits records per §3, treating unknown roles and unknown fields as data rather
+   than errors;
+3. resolves splits identically to the reference, including the dust rule, the cycle guard, the
+   zero-share filter, and duplicate resolution.
+
+Everything else — rates, who may publish, what a payout attaches to, whether money moves at
+all — is application policy. **x420 is a data standard with a reference economic model, not an
+economic standard.**
+
+---
+
 ## 2. Identity
 
 ### 2.1 Derivation
@@ -470,7 +518,12 @@ defined values, but any string parses. It records *what someone is being paid fo
 
 #### `royalty_bps` does double duty — and the second reading was missing
 
-The same field answers two questions, and a consumer needs both:
+`royalty_bps` states the terms a creator **asks for** (§1.1); what follows is how the reference
+model turns those terms into numbers. A consumer may honour them differently — cap them, ignore
+them, apply them to something other than a fee stream — but it must resolve the *split*
+identically, because that part is normative.
+
+The same field answers two questions, and a consumer of the reference model needs both:
 
 | Reading | Where | Meaning |
 |---|---|---|

@@ -33,6 +33,12 @@ Read in this order. Each assumes the one above it.
 `SPEC.md` is normative — if it disagrees with anything else, including this README, it wins.
 The other two are explanatory and will drift faster.
 
+**Not all of the spec binds you.** The record format and split resolution are normative,
+because apps that disagree cannot read each other's records or, worse, pay different people.
+What a consumer *does* with resolved splits is application policy — chadpad's launch model is
+chadpad's choice, not a rule. See `SPEC.md` §1.1. **x420 is a data standard with a reference
+economic model, not an economic standard.**
+
 Per-repo integration notes live in each consuming repo as `X420.md` (`docs/X420.md` in
 memecraft). Those are written for a developer who can only see that one repo.
 
