@@ -303,6 +303,61 @@ recognizable work.
 **Do not describe x420 as proving provenance.** It provides attested lineage for memes born
 inside the ecosystem, and signed, timestamped claims for everything else.
 
+### 3.4 Duplicates: same work, different bytes
+
+`x420_id` deduplicates byte-identical files automatically — same bytes, same id. It does
+nothing for the case that matters: **a re-encode, resize, or re-upload of the same work**,
+which produces a completely different id (§2.1) and therefore a second, competing record.
+
+Left unhandled, that fragments the lineage graph. A meme that should be one node with many
+descendants becomes several nodes each with a few, and the original creator's share is diluted
+by the existence of copies they did not make. It is also the mechanism behind the
+under-claiming attack in §3.2.
+
+#### `duplicate_of` is equivalence, not derivation
+
+```jsonc
+{ "id": "x420:…copy…", "duplicate_of": "x420:…original…" }
+```
+
+**A duplicate is not a child**, and the distinction decides who gets paid:
+
+| Modelled as | Result |
+|---|---|
+| `parents` (derivation) | the re-uploader takes a creator's share; the original keeps only a royalty carve — **copying is rewarded** |
+| `duplicate_of` (equivalence) | splits resolve to the canonical record — **launching a copy pays exactly who the original would** |
+
+The second removes the incentive rather than policing the behaviour, which is the same
+principle as taxing issuance rather than copying (§1).
+
+Resolution short-circuits: a duplicate's own `parents` and `attribution` are **ignored**.
+Otherwise re-uploading with invented lineage would be a way to rewrite who gets paid.
+
+#### The carve rate comes from the canonical record
+
+Subtle and load-bearing. When a parent is itself a duplicate, the royalty rate must be read
+from the record it resolves to, never from the duplicate.
+
+Reading it from the duplicate opens a laundering path: re-upload a meme as a duplicate with
+`royalty_bps: 0`, remix your own copy, and the original's royalty vanishes while the lineage
+still looks well-formed. Resolving the rate canonically closes it — remixing a copy and
+remixing the original produce identical splits.
+
+Chains are permitted; cycles among duplicates raise `LineageCycle`, since "which is the
+original" would otherwise be unanswerable.
+
+#### Detection stays human
+
+`phash` proposes duplicates; a curator disposes. Perceptual hashes have real false positives —
+two different captions over the same template are near-identical by construction — and an
+automatic link would misroute payouts on exactly the memes that matter most.
+
+One case is safe to collapse automatically: **same-creator duplicates.** memecraft's exports
+are non-deterministic (§2.1), so one user exporting twice yields two ids with identical
+attribution. Nothing is at stake in the payout, only catalog tidiness.
+
+Different-claimed-creator duplicates are the adversarial case and always need review.
+
 ### 3.3 "Nobody knows who" and "nobody is owed" are different states
 
 Two independent axes, and conflating them misroutes money:

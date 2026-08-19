@@ -89,6 +89,15 @@ class Meme(BaseModel):
     license: License
     provenance: Provenance = Provenance.ASSERTED
     origin: Origin | None = None
+    # The canonical record for the same underlying work, when this artifact is a re-encode,
+    # resize, or re-upload of one already registered.
+    #
+    # This is EQUIVALENCE, not derivation, and the distinction is load-bearing. A duplicate is
+    # not a child: modelling it as a parent edge would hand the copier a creator's share and
+    # leave the original with only a royalty carve, which rewards re-uploading. Resolving to
+    # the canonical record instead means launching a token on a copy pays exactly who the
+    # original would have paid, removing the incentive entirely. See SPEC.md §3.4.
+    duplicate_of: MemeId | None = None
 
     def model_post_init(self, _context: object) -> None:
         # An EMPTY attribution list is meaningful, not a mistake: it means nobody is owed —
@@ -146,11 +155,24 @@ def resolve_splits(
         raise UnknownMeme(meme_id) from None
 
     seen = _seen | {meme_id}
+
+    # A duplicate short-circuits everything: it is the same work, so its payouts and its
+    # ancestry are the canonical record's. Any parents or attribution declared on the
+    # duplicate itself are ignored — otherwise re-uploading with invented lineage would be a
+    # way to rewrite who gets paid.
+    if meme.duplicate_of is not None:
+        if meme.duplicate_of not in store:
+            raise UnknownMeme(meme.duplicate_of)
+        return resolve_splits(meme.duplicate_of, store, budget_bps=budget_bps, _seen=seen)
     payouts: defaultdict[str, int] = defaultdict(int)
     remaining = budget_bps
 
     for parent in meme.parents:
-        ancestor = store.get(parent.id)
+        # Take the carve RATE from the canonical record, not from whatever the named parent
+        # says. Otherwise re-uploading a meme as a duplicate with `royalty_bps: 0` and then
+        # remixing that copy would strip the original's royalty while still looking like a
+        # well-formed lineage.
+        ancestor = store.get(canonical_id(parent.id, store))
         if ancestor is None:
             raise UnknownMeme(parent.id)
         carve = min(budget_bps * ancestor.license.royalty_bps // BPS_TOTAL, remaining)
@@ -174,6 +196,27 @@ def resolve_splits(
         payouts[absorber] += dust
 
     return dict(payouts)
+
+
+def canonical_id(meme_id: str, store: dict[str, Meme]) -> str:
+    """Follow `duplicate_of` to the record that actually owns this work.
+
+    Chains are permitted — a duplicate of a duplicate — but a cycle among them would make
+    "which is the original" unanswerable, so it raises rather than picking arbitrarily.
+    """
+    seen: set[str] = set()
+    current = meme_id
+    while True:
+        if current in seen:
+            raise LineageCycle(f"duplicate cycle through {current}")
+        seen.add(current)
+        try:
+            meme = store[current]
+        except KeyError:
+            raise UnknownMeme(current) from None
+        if meme.duplicate_of is None:
+            return current
+        current = meme.duplicate_of
 
 
 def ancestry(meme_id: str, store: dict[str, Meme]) -> list[str]:

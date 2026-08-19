@@ -17,6 +17,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 from x420.identity import ID_HEX_CHARS, meme_id, meme_id_from_digest  # noqa: E402
 from x420.lineage import (  # noqa: E402
     BPS_TOTAL,
+    canonical_id,
     Content,
     License,
     LineageCycle,
@@ -145,6 +146,53 @@ _heir = Meme(
 )
 _hs = resolve_splits(_heir.id, {_pd.id: _pd, _heir.id: _heir})
 check("a free-to-use parent carves nothing", _hs == {_a: BPS_TOTAL}, str(_hs))
+
+# A duplicate is the same work, not a child. Launching a token on a re-upload must pay whoever
+# the original would have paid, or re-uploading becomes a way to capture a creator's share.
+_orig = Meme(
+    id="x420:" + "1" * 32,
+    content=Content(uri="u", sha256="1" * 64, media_type="image/png"),
+    attribution=[{"address": _a, "role": "creator", "share_bps": BPS_TOTAL}],
+    license=License(id="l", derivatives=True, royalty_bps=1000),
+)
+_copy = Meme(  # re-uploaded by someone else, royalty stripped to zero
+    id="x420:" + "2" * 32,
+    content=Content(uri="u", sha256="2" * 64, media_type="image/png"),
+    attribution=[{"address": _b, "role": "creator", "share_bps": BPS_TOTAL}],
+    license=License(id="l", derivatives=True, royalty_bps=0),
+    duplicate_of=_orig.id,
+)
+_dupes = {_orig.id: _orig, _copy.id: _copy}
+check(
+    "a duplicate pays the original, not the re-uploader",
+    resolve_splits(_copy.id, _dupes) == {_a: BPS_TOTAL},
+    str(resolve_splits(_copy.id, _dupes)),
+)
+check("canonical_id resolves through a duplicate", canonical_id(_copy.id, _dupes) == _orig.id)
+
+# Regression guard: the carve RATE must come from the canonical record. Reading it from the
+# duplicate let a re-upload with royalty_bps=0 strip the original's royalty from any remix.
+_c = "0x" + "c" * 40
+_via_copy = Meme(
+    id="x420:" + "3" * 32,
+    content=Content(uri="u", sha256="3" * 64, media_type="image/png"),
+    parents=[Parent(id=_copy.id, relation="remix")],
+    attribution=[{"address": _c, "role": "creator", "share_bps": BPS_TOTAL}],
+    license=License(id="l", derivatives=True, royalty_bps=0),
+)
+_via_orig = Meme(
+    id="x420:" + "4" * 32,
+    content=Content(uri="u", sha256="4" * 64, media_type="image/png"),
+    parents=[Parent(id=_orig.id, relation="remix")],
+    attribution=[{"address": _c, "role": "creator", "share_bps": BPS_TOTAL}],
+    license=License(id="l", derivatives=True, royalty_bps=0),
+)
+_laundry = {**_dupes, _via_copy.id: _via_copy, _via_orig.id: _via_orig}
+check(
+    "remixing a copy cannot launder away the royalty",
+    resolve_splits(_via_copy.id, _laundry) == resolve_splits(_via_orig.id, _laundry),
+    f"copy={resolve_splits(_via_copy.id, _laundry)} orig={resolve_splits(_via_orig.id, _laundry)}",
+)
 
 print()
 if failures:
