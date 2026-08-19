@@ -209,6 +209,48 @@ def resolve_splits(
     return {address: bps for address, bps in payouts.items() if bps}
 
 
+def resolve_launch_splits(
+    meme_id: str, store: dict[str, Meme], launcher: str
+) -> dict[str, int]:
+    """The COMPLETE payee list for a tokenization — the launcher plus the meme's lineage.
+
+    `resolve_splits` answers a narrower question: who is *owed* a share of one payment. The
+    launcher is the payer, so they never appear in it. A consumer that treats that owed-set as
+    the whole payee list hands the launcher's entire fee stream to someone else, which makes
+    launching another creator's meme pure altruism and kills the behaviour the ecosystem
+    exists to produce.
+
+    `license.royalty_bps` therefore does double duty, and both readings are needed:
+
+      * within `resolve_splits` — what a PARENT carves from a descendant's owed pool;
+      * here — what a LAUNCHER owes the meme's lineage.
+
+    So a 2000-bps meme means the launcher keeps 8000 and the lineage divides 2000 among
+    itself. Remixing compounds naturally: launch on a remix of a 2000-bps original and the
+    remixer takes 1600 while the original takes 400.
+
+    Totals are exact. `resolve_splits` already returns precisely its budget, so the launcher's
+    remainder plus the lineage is always BPS_TOTAL.
+    """
+    canonical = store.get(canonical_id(meme_id, store))
+    if canonical is None:
+        raise UnknownMeme(meme_id)
+
+    royalty = canonical.license.royalty_bps
+    payouts: dict[str, int] = {}
+
+    if royalty:
+        payouts.update(resolve_splits(meme_id, store, budget_bps=royalty))
+
+    # Merged rather than assigned, so launching your own meme collapses to a single payee
+    # instead of listing the same address twice — which the splitter would reject.
+    keep = BPS_TOTAL - royalty
+    if keep:
+        payouts[launcher] = payouts.get(launcher, 0) + keep
+
+    return {address: bps for address, bps in payouts.items() if bps}
+
+
 def canonical_id(meme_id: str, store: dict[str, Meme]) -> str:
     """Follow `duplicate_of` to the record that actually owns this work.
 

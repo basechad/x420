@@ -468,6 +468,40 @@ A parent at `royalty_bps: 2000` takes 2000; the remaining 8000 divides 60/30/10 
 defined values, but any string parses. It records *what someone is being paid for*; only
 `share_bps` decides how much. An unrecognised role must never make a record unparseable.
 
+#### `royalty_bps` does double duty — and the second reading was missing
+
+The same field answers two questions, and a consumer needs both:
+
+| Reading | Where | Meaning |
+|---|---|---|
+| parent carve | inside `resolve_splits` | what an **ancestor** takes from a descendant's owed pool |
+| **launch royalty** | `resolve_launch_splits` | what a **launcher** owes the meme's lineage |
+
+`resolve_splits` answers a deliberately narrow question — *who is owed a share of one payment*.
+**The launcher never appears in it, because the launcher is the payer.**
+
+Treating that owed-set as the complete payee list is the trap, and it is not theoretical: it
+hands the launcher's entire creator fee stream to someone else. Launching another creator's
+meme then becomes pure altruism, which destroys the exact behaviour the ecosystem exists to
+produce. It is also invisible in testing, because launching *your own* meme resolves to
+yourself at 10000 — identical to having no splitter at all.
+
+Use `resolve_launch_splits(meme_id, store, launcher)` for a tokenization. It returns the
+complete list:
+
+```
+launcher : BPS_TOTAL - royalty_bps
+lineage  : resolve_splits(meme, budget_bps = royalty_bps)
+```
+
+A 2000-bps meme leaves the launcher 8000 and gives the lineage 2000. Remixing compounds
+naturally — launch on a remix of a 2000-bps original and the remixer takes 1600 while the
+original takes 400, which is exactly "the remixer owes 20% of what they received."
+
+Totals stay exact, since `resolve_splits` returns precisely its budget. A launcher who is also
+in the lineage has their shares **merged**, not listed twice — `LineageSplitter` would reject a
+duplicate payee.
+
 #### Resolved splits are not raw attribution
 
 `resolve_splits` returns what each address is actually owed after the whole ancestry is walked.

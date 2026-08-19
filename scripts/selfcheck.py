@@ -29,6 +29,7 @@ from x420.lineage import (  # noqa: E402
     Meme,
     Parent,
     Provenance,
+    resolve_launch_splits,
     resolve_splits,
 )
 from x420.store import MEMES  # noqa: E402
@@ -149,6 +150,36 @@ check(
     "no payee resolves to a zero share",
     all(v > 0 for v in _small.values()) and sum(_small.values()) == 5,
     str(_small),
+)
+
+# The launcher is the payer, so resolve_splits never lists them. Treating that owed-set as the
+# whole payee list hands a launcher's entire fee stream to someone else — which made launching
+# another creator's meme pure altruism. resolve_launch_splits composes the complete list.
+_lr = "0x" + "d" * 40
+_orig_r = Meme(
+    id="x420:" + "a" * 32,
+    content=Content(uri="u", sha256="a" * 64, media_type="image/png"),
+    attribution=[{"address": _a, "role": "creator", "share_bps": BPS_TOTAL}],
+    license=License(id="l", derivatives=True, royalty_bps=2000),
+)
+_remix_r = Meme(
+    id="x420:" + "b" * 32,
+    content=Content(uri="u", sha256="b" * 64, media_type="image/png"),
+    parents=[Parent(id=_orig_r.id, relation="remix")],
+    attribution=[{"address": _b, "role": "creator", "share_bps": BPS_TOTAL}],
+    license=License(id="l", derivatives=True, royalty_bps=2000),
+)
+_rs = {_orig_r.id: _orig_r, _remix_r.id: _remix_r}
+_launch = resolve_launch_splits(_remix_r.id, _rs, _lr)
+check(
+    "the launcher keeps 10000 minus the royalty",
+    _launch == {_lr: 8000, _b: 1600, _a: 400},
+    str(_launch),
+)
+check("launch splits total exactly", sum(_launch.values()) == BPS_TOTAL)
+check(
+    "launching your own meme yields one merged payee",
+    resolve_launch_splits(_orig_r.id, _rs, _a) == {_a: BPS_TOTAL},
 )
 
 # --- provenance -------------------------------------------------------------------------
