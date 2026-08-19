@@ -91,9 +91,21 @@ class Meme(BaseModel):
     origin: Origin | None = None
 
     def model_post_init(self, _context: object) -> None:
+        # An EMPTY attribution list is meaningful, not a mistake: it means nobody is owed —
+        # public domain, waived, or otherwise free to use. That is a different state from
+        # "someone is owed but we cannot identify them", which is `unknown` provenance with a
+        # commons payee. Conflating the two routes money to the commons pool for work that was
+        # never owed to anyone. See SPEC.md §3.3.
+        if not self.attribution:
+            return
         total = sum(p.share_bps for p in self.attribution)
         if total != BPS_TOTAL:
             raise ValueError(f"attribution must sum to {BPS_TOTAL} bps, got {total}")
+
+    @property
+    def is_free_to_use(self) -> bool:
+        """Nobody is owed for this meme itself, and descendants carve nothing from it."""
+        return not self.attribution and self.license.royalty_bps == 0
 
     @property
     def is_verified_original(self) -> bool:

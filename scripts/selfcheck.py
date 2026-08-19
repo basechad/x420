@@ -124,6 +124,28 @@ _unknown = Meme(
 )
 check("unknown provenance is not a verified original", not _unknown.is_verified_original)
 
+# "Nobody is owed" must stay distinct from "nobody knows who is owed". Encoding public domain
+# as a commons payee would route a whole fee stream to the holding pool for work that was never
+# owed to anyone. See SPEC.md 3.3.
+_pd = Meme(
+    id="x420:" + "9" * 32,
+    content=Content(uri="u", sha256="9" * 64, media_type="image/png"),
+    attribution=[],
+    license=License(id="x420-public-domain", derivatives=True, royalty_bps=0),
+)
+check("free-to-use memes owe nobody", resolve_splits(_pd.id, {_pd.id: _pd}) == {} and _pd.is_free_to_use)
+
+# A free-to-use parent carves nothing, and the rest of the ancestry still totals exactly.
+_heir = Meme(
+    id="x420:" + "8" * 32,
+    content=Content(uri="u", sha256="8" * 64, media_type="image/png"),
+    parents=[Parent(id=_pd.id, relation="template")],
+    attribution=[{"address": _a, "role": "creator", "share_bps": BPS_TOTAL}],
+    license=License(id="l", derivatives=True, royalty_bps=0),
+)
+_hs = resolve_splits(_heir.id, {_pd.id: _pd, _heir.id: _heir})
+check("a free-to-use parent carves nothing", _hs == {_a: BPS_TOTAL}, str(_hs))
+
 print()
 if failures:
     print(f"  {len(failures)} invariant(s) broken\n")

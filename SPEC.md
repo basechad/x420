@@ -154,7 +154,8 @@ cheap; a migration of a live dedupe path is not.
 }
 ```
 
-`attribution` shares are basis points and **must** sum to 10000. `relation` is one of:
+`attribution` shares are basis points and must sum to 10000 **when the list is non-empty**;
+an empty list means nobody is owed (§3.3). `relation` is one of:
 
 | `relation` | Meaning |
 |---|---|
@@ -301,6 +302,54 @@ recognizable work.
 
 **Do not describe x420 as proving provenance.** It provides attested lineage for memes born
 inside the ecosystem, and signed, timestamped claims for everything else.
+
+### 3.3 "Nobody knows who" and "nobody is owed" are different states
+
+Two independent axes, and conflating them misroutes money:
+
+| Axis | Field | Question it answers |
+|---|---|---|
+| **Provenance** | `provenance` | How confident are we in the *lineage*? |
+| **Obligation** | `attribution` + `license.royalty_bps` | Who, if anyone, is *owed*? |
+
+They vary independently:
+
+| State | `provenance` | `attribution` | Meaning |
+|---|---|---|---|
+| Attributed | `attested` | creator + editors | normal |
+| **Unknown creator** | `unknown` | `[{ role: "commons", … }]` | someone is owed; identity unrecovered, share held (§8.1) |
+| **Free to use** | any | **`[]` (empty)** | nobody is owed — public domain, waived, or self-dedicated |
+| Unknown *and* free | `unknown` | `[]` | provenance unrecoverable *and* no obligation |
+
+**An empty `attribution` list is meaningful, not malformed.** It is the only way to express
+"nobody is owed", and the sum-to-10000 rule applies only to non-empty lists. Paired with
+`royalty_bps: 0` it means descendants carve nothing either — that combination is
+`Meme.is_free_to_use`.
+
+Without this, public domain has no representation. The nearest available encoding — a commons
+payee at 10000 bps — routes **the entire creator fee stream to the commons pool for work
+nobody was ever owed for**, which is worse than doing nothing: it manufactures an obligation
+and then holds funds against a claim that can never legitimately arrive.
+
+#### Consumer rule
+
+`resolve_splits` returns `{}` for a free-to-use meme with no paying ancestors. Consumers must
+read empty as **"no lineage obligation"**, not as an error or an empty payout:
+
+- **chadpad:** deploy no splitter and launch normally, so the launcher keeps their own fee
+  stream. Deploying a splitter with no payees would revert at construction anyway.
+- Resolution stays exact everywhere else — a free-to-use *parent* simply carves nothing, and
+  the remaining ancestry still totals 10000.
+
+#### Not yet supported: relation-dependent rates
+
+`relation` (`remix`, `template`, `reaction`, …) is **metadata only** — it does not affect the
+carve. A `template` parent and a `remix` parent at the same `royalty_bps` take an identical
+share.
+
+§3's note that `template` is "kept distinct so it can carry its own royalty rate" describes an
+intended future capability, not current behaviour. Varying rates *per parent* work today, since
+each parent carves its own `royalty_bps`; varying them *per relation* does not.
 
 ### 3.2 The incentive asymmetry
 
