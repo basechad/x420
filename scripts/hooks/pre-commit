@@ -1,0 +1,39 @@
+#!/bin/sh
+# x420 pre-commit hook.
+#
+# Two distinct jobs, deliberately treated differently:
+#
+#   BLOCKING   — invariants this repo controls. A broken split rule or an unstable id would
+#                misroute real money in five downstream apps, so it must not reach a commit.
+#
+#   ADVISORY   — cross-repo blocker status. Whether chadpad has shipped is not a reason to
+#                refuse a docs commit here, but seeing it at commit time is what keeps the
+#                docs honest. Never fails the commit.
+#
+# Install:  sh scripts/hooks/install.sh
+
+set -e
+
+ROOT="$(git rev-parse --show-toplevel)"
+cd "$ROOT"
+
+if [ -x ".venv/bin/python" ]; then
+    PY=".venv/bin/python"
+else
+    PY="python3"
+fi
+
+echo "x420 invariants:"
+if ! $PY scripts/selfcheck.py; then
+    echo "Commit refused — the reference implementation broke an invariant."
+    echo "Other repos derive payouts from these rules. Fix, or --no-verify if you know why."
+    exit 1
+fi
+
+# Advisory only. Failures here mean work is outstanding elsewhere, not that this commit is bad.
+if [ -f scripts/status.py ]; then
+    echo "cross-repo status (advisory):"
+    $PY scripts/status.py --blockers --quiet 2>/dev/null | tail -n 3 || true
+fi
+
+exit 0

@@ -36,6 +36,23 @@ The other two are explanatory and will drift faster.
 Per-repo integration notes live in each consuming repo as `X420.md` (`docs/X420.md` in
 memecraft). Those are written for a developer who can only see that one repo.
 
+### Hooks
+
+```bash
+sh scripts/hooks/install.sh
+```
+
+`.git/hooks` is not version controlled, so re-run this after cloning. The pre-commit hook:
+
+- **blocks** when `scripts/selfcheck.py` fails — invariants this repo controls, where a
+  regression would misroute money in five downstream apps;
+- **reports** cross-repo blocker status without ever failing the commit, since work
+  outstanding in another repo is not a reason to refuse a docs change here.
+
+Run the invariants directly with `python3 scripts/selfcheck.py`. Two of them are regressions
+for bugs that actually shipped: non-portable dust tie-breaking, and treating `unknown`
+provenance as a verified original.
+
 ### Checking what has actually landed
 
 ```bash
