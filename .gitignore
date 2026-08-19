@@ -1,0 +1,17 @@
+# Python
+.venv/
+venv/
+__pycache__/
+*.py[cod]
+.pytest_cache/
+
+# Editors
+.idea/
+.vscode/
+.DS_Store
+
+# Secrets — the x402 reference server takes a payout address, and any future
+# signer config must never be committed.
+.env
+.env.*
+!.env.example
