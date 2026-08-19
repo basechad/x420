@@ -557,6 +557,47 @@ uncomfortable case, so the mitigations are not optional:
   challenge window in §3.1.3. Two people claiming one meme needs a decision procedure that
   does not yet exist.
 
+#### 8.1.4 Adjudicating claims — a direction, not a decision
+
+**Still unsolved.** Recorded so the thinking is not lost, and explicitly not a specification.
+Nothing here should be built before a real claim exists; writing the procedure now means
+writing it from imagination.
+
+**The problem is smaller than it looks.** Three cases with wildly different frequencies:
+
+| Case | Frequency | Cost |
+|---|---|---|
+| Nobody ever claims | ~every meme | zero |
+| One claimant, settled by research | most claims | minutes |
+| Genuinely contested | rare | hard |
+
+Designing for the third before the second has been seen is the trap.
+
+**Filter by money first.** Claims only matter where a balance accrued, and §8.1.1's accounting
+already says exactly which memes those are — almost all will be zero. The queue is therefore
+"memes with a non-zero commons balance *and* a claimant", which scales with value rather than
+with catalog size.
+
+**Ask for possession, not argument.** Research settles many cases — reverse image search for
+earliest appearance, KnowYourMeme, original post timestamps, archived threads. But the
+strongest evidence is holding something only the creator would have: the layered source file,
+a higher-resolution version, the unwatermarked original, a surrounding body of work in the
+same style. That converts most disputes into a document request rather than a judgement.
+
+**Publish pending claims on the meme's own page.** A public objection window works — it is
+trademark opposition, and silence against a findable notice is meaningful. But nobody watches
+a social account, and the people most likely to object are precisely those not following it.
+The meme's own page is where someone searching for that meme actually arrives, and it makes
+the notice permanent and linkable. Social posts amplify; the page is the record.
+
+**Bias conservative, because the errors are asymmetric.** Approving a wrong claim pays the
+wrong person permanently. Rejecting a right one is recoverable — they can return with better
+evidence. Slow is cheap; wrong is not.
+
+**Avoid a bond on claims.** It deters spurious claims, but the likely claimant is a
+non-crypto artist who drew something a decade ago. A bond is a barrier to exactly the person
+the mechanism exists to reach.
+
 ### 8.2 Other open questions
 
 - **Compounding carve.** Should cumulative ancestral royalty be capped so deep chains do not
