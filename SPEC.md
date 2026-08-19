@@ -443,6 +443,54 @@ share.
 intended future capability, not current behaviour. Varying rates *per parent* work today, since
 each parent carves its own `royalty_bps`; varying them *per relation* does not.
 
+### 3.5 How attribution actually works
+
+Attribution is three fields per payee — but the *effective* payout is attribution composed
+with lineage, and the two are independent knobs.
+
+```jsonc
+"attribution": [
+  { "address": "0x…", "role": "creator",  "share_bps": 6000 },
+  { "address": "0x…", "role": "editor",   "share_bps": 3000 },
+  { "address": "0x…", "role": "letterer", "share_bps": 1000 }
+]
+```
+
+| Knob | Set by | Controls |
+|---|---|---|
+| **How much this meme keeps** | each *parent's* `license.royalty_bps` | the carve taken off the top, per ancestor |
+| **How that keep is divided** | this meme's `attribution` | shares among its own contributors |
+
+A parent at `royalty_bps: 2000` takes 2000; the remaining 8000 divides 60/30/10 into
+4800 / 2400 / 800. Contributors compete only with each other, never with the ancestry.
+
+`role` is descriptive, not arithmetic — `creator`, `editor`, `curator`, `commons` are the
+defined values, but any string parses. It records *what someone is being paid for*; only
+`share_bps` decides how much. An unrecognised role must never make a record unparseable.
+
+#### Resolved splits are not raw attribution
+
+`resolve_splits` returns what each address is actually owed after the whole ancestry is walked.
+Three normalisations apply, and consumers depend on all of them:
+
+- **Zero-carve ancestors are dropped**, not credited zero — a distant ancestor whose carve
+  rounds away simply does not appear.
+- **Zero-share payees are dropped.** A 1-bps letterer receives nothing once the budget is small
+  enough, which happens naturally deep in a chain. `LineageSplitter` rejects a zero share at
+  construction, so emitting one would turn a resolvable lineage into a launch that reverts.
+- **Dust is assigned before that filtering**, so removing zeroes never changes the total.
+
+#### Limits worth knowing
+
+- **No vesting, conditions, or time-bounds.** Shares are fixed at publish and resolved once at
+  splitter construction.
+- **Payees are raw addresses.** No ENS, no off-chain identity, no contract-mediated recipients
+  beyond whatever the address itself is.
+- **A deep lineage can exceed the splitter's payee cap.** `LineageSplitter.MAX_PAYEES` is 32
+  and the record schema imposes no limit, so a sufficiently branched ancestry can resolve to
+  something unlaunchable. Consumers must check the resolved count — chadpad does — rather than
+  assuming a valid record implies a valid launch.
+
 ### 3.2 The incentive asymmetry
 
 Self-declared lineage is only half-exploitable, which makes it far more defensible than it

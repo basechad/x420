@@ -201,7 +201,12 @@ def resolve_splits(
         absorber = min(payouts, key=lambda a: (-payouts[a], a))
         payouts[absorber] += dust
 
-    return dict(payouts)
+    # Drop payees whose resolved share rounded to nothing. A minority payee — a 1-bps letterer,
+    # say — receives zero once the budget is small enough, which happens naturally deep in an
+    # ancestry. They are owed nothing, and `LineageSplitter` rejects a zero share at
+    # construction, so leaving them in turns a resolvable lineage into a launch that reverts.
+    # Dust has already been assigned above, so removing zeroes cannot change the total.
+    return {address: bps for address, bps in payouts.items() if bps}
 
 
 def canonical_id(meme_id: str, store: dict[str, Meme]) -> str:

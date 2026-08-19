@@ -132,6 +132,25 @@ try:
 except LineageCycle:
     check("lineage cycles are refused", True)
 
+# A minority payee resolves to zero once the budget is small enough, which happens naturally
+# deep in an ancestry. LineageSplitter rejects a zero share at construction, so emitting one
+# turns a resolvable lineage into a launch that reverts.
+_minor = Meme(
+    id="x420:" + "5" * 32,
+    content=Content(uri="u", sha256="5" * 64, media_type="image/png"),
+    attribution=[
+        {"address": _a, "role": "creator", "share_bps": 9999},
+        {"address": _b, "role": "letterer", "share_bps": 1},
+    ],
+    license=License(id="l", derivatives=True, royalty_bps=0),
+)
+_small = resolve_splits(_minor.id, {_minor.id: _minor}, budget_bps=5)
+check(
+    "no payee resolves to a zero share",
+    all(v > 0 for v in _small.values()) and sum(_small.values()) == 5,
+    str(_small),
+)
+
 # --- provenance -------------------------------------------------------------------------
 
 # An empty `parents` on an `unknown` record means provenance was never captured, NOT that the
