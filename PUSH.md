@@ -114,6 +114,29 @@ The signer key is separate from the mint-authorisation key, so an x420 key leak 
 leak. It is configuration (`MEMECRAFT_X420_SIGNER_PRIVATE_KEY`) and rotatable without a
 redeploy.
 
+### 3. `content_uri` — the launch handoff
+
+For the memecraft → chadpad handoff (`ARCHITECTURE.md` §12.5). memecraft WO-4 adds it;
+chadpad WO-5 consumes it.
+
+| | |
+|---|---|
+| Field | `content_uri` |
+| Value | canonical **`ipfs://` URI** (memecraft's `memes.export_url`) |
+| Null when | no pinned artifact — the same condition that leaves a response unsigned |
+| **Not** in the signed payload | see below |
+
+**Deliberately unsigned.** `content_uri` is a *pointer*, and signing a pointer is weaker than
+what the existing signature already permits: chadpad fetches the bytes, hashes them, and
+compares against the `content_sha256` that **is** signed. Matching bytes prove the artifact is
+the one the lineage was signed over, regardless of how or by whom it was served.
+
+**Verify the bytes, not the pointer.** That is the point of content addressing, and it means
+the EIP-712 struct — already implemented and verified on both sides — does not change.
+
+An `ipfs://` URI rather than a gateway URL, so the value cannot drift and chadpad is not
+coupled to memecraft's gateway choice.
+
 ---
 
 ## Work orders
