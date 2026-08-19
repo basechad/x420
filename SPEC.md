@@ -479,46 +479,83 @@ Steps 1–4 deliver the value. Steps 5–7 compound it.
 
 ## 8. Open questions
 
-### 8.1 Unresolved: payout policy for imported memes — **blocks chadpad launch flow**
+### 8.1 Resolved: the commons holding address
 
-When a token is launched against an `unknown`-provenance meme, what happens to the share
-that would otherwise go to ancestors? Undecided as of 2026-08-17.
+*Decided 2026-08-18.*
 
-**Scope.** This is a *launch-time* decision, applied once at `LineageSplitter` construction —
-not a catalog-wide rule. An `unknown` meme can be created, published, indexed, searched, and
-used as a format without the question arising; it bites only when someone tokenizes it.
+When a token launches against an `unknown`-provenance meme, the ancestral share goes to a
+**commons holding address**, split with the meme's curator. Nobody knows who made the artwork,
+but the value it carries predates the launcher, so it is neither theirs nor the protocol's to
+absorb.
 
-Because the splitter is revenue-source agnostic, **one payee list governs every stream into
-that contract** — launch fees in WETH, meme-creation fees in the launched token, and any future
-x402 licensing in USDC. There is no need for separate policies per revenue source.
+```jsonc
+{ "provenance": "unknown",
+  "attribution": [
+    { "address": "0x…curator…", "role": "curator", "share_bps": 3000 },
+    { "address": "0x…commons…", "role": "commons", "share_bps": 7000 }
+  ] }
+```
 
-Two separable questions sit inside this:
+The ratio is configuration, not spec.
 
-| | Question |
+**The role is `commons`, never `creator` or `originator`.** That address did not make the
+meme, and a record must never assert authorship it cannot support — the same rule that stops
+empty `parents` from meaning "verified original". `provenance` stays `unknown`.
+
+**It is configuration, not a constant.** Applied once at `LineageSplitter` construction and
+therefore forward-only: changing the address or the ratio affects new launches while existing
+payee lists stay untouched. Safe to start restrictive.
+
+#### 8.1.1 It is a holding tank, and the accounting already exists
+
+Funds held there are **claimable**: when an admin verifies a meme's real creator, that creator
+can collect what accrued against their work.
+
+The obvious objection is that many splitters pay one address, so the balance is pooled and a
+later claimant's share looks unknowable. It is not, because two things already on-chain make
+per-meme accounting exact:
+
+| Source | What it gives |
 |---|---|
-| **Gate** | May an `unknown`-lineage meme be launched at all? |
-| **Allocation** | If so, who receives the ancestral share no identifiable creator can claim? |
+| `LineageSplitter.x420Content` (immutable) | which meme this splitter is for |
+| `PaidOut(token, account, amount)` | how much it sent to the commons address, and when |
 
-**It is also forward-only.** Splitters are immutable, so revising the policy later affects only
-new launches; existing payee lists are untouched. Starting restrictive and loosening is
-therefore safe, and the cost of delay is bounded — memes that could not launch during the
-strict period.
+Joining those reconstructs, for any meme, exactly what its unknown creator is owed — per
+token, over all time, from chain data alone. No new contract, no memo field, no deposit
+bookkeeping. chadpad's indexer already watches splitters.
 
-| Option | Effect |
-|---|---|
-| Refuse the launch | Kills most of the catalog. Too strict — `unknown` is the majority state. |
-| Launcher takes 100% | Identical to every other launchpad. Zero differentiation. |
-| Curator share | Compensates the attributable work that actually occurred (§3.1.1). |
-| Commons pool | Ancestral share funds a treasury for curation/creators. Asserts that the meme's value predates the launcher. |
+This is the payoff from anchoring `x420Content` at deployment. Without it, commons deposits
+could not be attributed to memes at all, and the holding tank would be a pool with no ledger.
 
-The last two are not exclusive; a split between them is defensible. This is an economic
-policy decision, not a technical one — `LineageSplitter` accepts any payee list, so the
-contract does not constrain the answer.
+**Be precise about the trust model.** Entitlement is provable from chain data; *payment* is
+custodial, since someone controls the address and sends the funds. That is an honest
+intermediate. The non-custodial version publishes a merkle root of verified claims and lets
+creators withdraw against it — and the accounting above is exactly what would generate that
+root, so it is an upgrade rather than a rewrite.
 
-**Related risk:** paying curators while original creators get nothing is defensible for
-anonymous folk art and uncomfortable for memes with known, living authors. (Matt Furie
-litigated over Pepe.) `source_url` and `attribution` already exist on the chadstash model;
-using them to flag known-author memes for separate handling is cheap insurance.
+#### 8.1.2 Verification is forward-looking for splitters, backward-looking for the pool
+
+Once an admin verifies a creator, the record gains real attribution and its provenance rises
+above `unknown`. But **deployed splitters are immutable and keep paying the commons address**.
+So the two directions differ:
+
+- **Future launches** of that meme, or of anything descending from it, pay the creator directly.
+- **Past accruals** are claimed from the pool, computed from the events above.
+
+Nothing needs revoking or migrating; the two mechanisms simply cover different periods.
+
+#### 8.1.3 What keeps this defensible
+
+Routing money from unattributed work to an address the team controls is exactly the
+uncomfortable case, so the mitigations are not optional:
+
+- **Publish the address** and what happens to the funds.
+- **Flag known-author memes as ineligible** for commons treatment. Defensible for anonymous
+  folk art, not for a living author — Matt Furie litigated over Pepe. `source_url` and
+  `attribution` already exist on the chadstash model.
+- **Adjudicating competing claims is unsolved**, and it is the same governance gap as the
+  challenge window in §3.1.3. Two people claiming one meme needs a decision procedure that
+  does not yet exist.
 
 ### 8.2 Other open questions
 

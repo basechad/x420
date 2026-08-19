@@ -37,8 +37,25 @@ class Parent(BaseModel):
     relation: Relation
 
 
+class Role(StrEnum):
+    """What a payee is being compensated for.
+
+    `commons` is the holding address for work whose author cannot be identified. It must
+    never be recorded as `creator` — that would assert authorship the record cannot support,
+    the same error as reading empty `parents` as "verified original". See SPEC.md §8.1.
+    """
+
+    CREATOR = "creator"
+    EDITOR = "editor"
+    CURATOR = "curator"
+    COMMONS = "commons"
+
+
 class Payee(BaseModel):
     address: Address
+    # Free-form rather than the Role enum: apps may carry roles this reference does not know
+    # about, and an unrecognised role must not make a record unparseable. Role never affects
+    # split arithmetic — only who is credited for what.
     role: str
     share_bps: int = Field(ge=1, le=BPS_TOTAL)
 
