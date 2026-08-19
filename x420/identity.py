@@ -31,6 +31,30 @@ def meme_id(rendered_bytes: bytes) -> str:
     return f"{PREFIX}:{content_digest(rendered_bytes)[:ID_HEX_CHARS]}"
 
 
+def pixel_hash(width: int, height: int, rgba: bytes) -> str:
+    """Digest of an image's decoded raster, ignoring its file wrapper.
+
+    Sits between `meme_id` (file bytes — changes if a single metadata byte moves) and a
+    perceptual hash (fuzzy, false positives). This one is exact but survives metadata
+    injection, container changes, and lossless re-encoding — so two files whose pixels match
+    can be linked as duplicates automatically, with no curator review. See SPEC.md §3.4.
+
+    The raster must be 8-bit RGBA, row-major, top-left origin. Normalisation is not optional:
+    the same PNG decoded as RGB rather than RGBA produces a different digest, so apps that
+    disagree about colour mode will never match. Dimensions are folded into the payload so a
+    2x1 and a 1x2 carrying the same byte run cannot collide.
+
+    Takes a raster rather than a file so this module stays dependency-free; callers decode
+    with whatever imaging library they already have.
+    """
+    expected = width * height * 4
+    if len(rgba) != expected:
+        raise ValueError(
+            f"expected {expected} bytes of 8-bit RGBA for {width}x{height}, got {len(rgba)}"
+        )
+    return hashlib.sha256(f"{width}x{height}|".encode() + rgba).hexdigest()
+
+
 def meme_id_from_digest(digest: str) -> str:
     """Build an id from a digest computed elsewhere.
 

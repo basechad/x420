@@ -14,7 +14,12 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
-from x420.identity import ID_HEX_CHARS, meme_id, meme_id_from_digest  # noqa: E402
+from x420.identity import (  # noqa: E402
+    ID_HEX_CHARS,
+    meme_id,
+    meme_id_from_digest,
+    pixel_hash,
+)
 from x420.lineage import (  # noqa: E402
     BPS_TOTAL,
     canonical_id,
@@ -54,6 +59,21 @@ try:
     check("short digests are rejected", False, "accepted a malformed digest")
 except ValueError:
     check("short digests are rejected", True)
+
+# The tier between file-identity and perceptual similarity: same pixels in a different wrapper
+# must match exactly, so memecraft's metadata-injected re-exports can be linked without review.
+_raster = bytes([255, 0, 0, 255, 0, 255, 0, 255])  # 2x1 RGBA
+check(
+    "pixel_hash ignores the file wrapper",
+    meme_id(b"wrapper-A" + _raster) != meme_id(b"wrapper-B!!" + _raster)
+    and pixel_hash(2, 1, _raster) == pixel_hash(2, 1, _raster),
+)
+check("pixel_hash folds in dimensions", pixel_hash(2, 1, _raster) != pixel_hash(1, 2, _raster))
+try:
+    pixel_hash(2, 1, _raster[:6])
+    check("pixel_hash rejects a mis-sized raster", False, "accepted short input")
+except ValueError:
+    check("pixel_hash rejects a mis-sized raster", True)
 
 # --- splits -----------------------------------------------------------------------------
 

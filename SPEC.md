@@ -346,6 +346,43 @@ remixing the original produce identical splits.
 Chains are permitted; cycles among duplicates raise `LineageCycle`, since "which is the
 original" would otherwise be unanswerable.
 
+#### Three tiers of sameness, three different actions
+
+Duplicate handling needs one hash per *kind* of difference. Each tier is strictly looser than
+the one above, and each warrants a different response:
+
+| Tier | Hashes | Survives | False positives | Action |
+|---|---|---|---|---|
+| `content.sha256` | the file as served | nothing | none | **same id** — not a duplicate at all |
+| `content.pixel_hash` | the decoded raster | metadata, container, lossless re-encode | none | **auto-link** as duplicate |
+| `content.phash` | perceptual fingerprint | resize, recompression, minor edits | yes | **flag for review** |
+
+`pixel_hash` is the tier that was missing, and it is the one that pays for itself immediately:
+memecraft injects a tEXt chunk carrying a UUID and timestamp, so two exports of one meme get
+different `x420_id`s while their pixels stay byte-identical (§2.1). Today only `phash` catches
+that, which drags an exactly-decidable case through human review. An equal `pixel_hash` with a
+differing `sha256` **is** the same image in a different wrapper — link it and move on.
+
+Derivation, which must match across apps or the digests never agree:
+
+```
+raster     = image as 8-bit RGBA, row-major, top-left origin
+payload    = f"{width}x{height}|" + raster
+pixel_hash = sha256(payload)
+```
+
+Normalisation is not optional: the same PNG decoded as RGB rather than RGBA yields a different
+digest. Dimensions are folded in so a 2×1 and a 1×2 sharing a byte run cannot collide.
+`x420.identity.pixel_hash()` is the reference; it takes a raster rather than a file so the
+module stays dependency-free.
+
+**Use SHA-256, not MD5.** This digest gates duplicate-linking, which moves money — someone
+crafting two images with one MD5, one benign and one claiming a different creator, is an attack
+on a payout path. The image decode dominates the cost regardless.
+
+Animated formats are out of scope for now: hashing only the first frame would call two
+different GIFs identical. Leave `pixel_hash` null rather than guessing.
+
 #### Detection stays human
 
 `phash` proposes duplicates; a curator disposes. Perceptual hashes have real false positives —

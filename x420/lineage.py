@@ -68,8 +68,14 @@ class License(BaseModel):
 
 class Content(BaseModel):
     uri: str
+    # Of the file as served. Decides identity.
     sha256: Sha256
     media_type: str
+    # Of the decoded raster (SPEC §3.4). Exact, but blind to the file wrapper — an equal
+    # `pixel_hash` with a differing `sha256` is the same image re-encoded, and is safe to link
+    # as a duplicate without review.
+    pixel_hash: Sha256 | None = None
+    # Perceptual. Suggests similarity; never decides identity or payouts.
     phash: str | None = None
 
 
