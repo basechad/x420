@@ -1,0 +1,27 @@
+[project]
+name = "x420"
+version = "0.1.0"
+description = "Cross-app meme identity and lineage — reference implementation and conformance vectors"
+requires-python = ">=3.11"
+dependencies = ["pydantic>=2.0"]
+
+# Consumers install from git rather than a registry until this stabilises:
+#   pip install "x420 @ git+https://github.com/basechad/x420.git"
+#
+# Installing beats vendoring. chadstash vendored a snapshot and it silently drifted four
+# changes behind — including duplicate resolution, so a re-uploaded meme paid the
+# re-uploader instead of the original. A pinned dependency makes that visible in a lockfile;
+# a copied file makes it invisible.
+
+[project.urls]
+Homepage = "https://github.com/basechad/x420"
+
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[tool.setuptools]
+packages = ["x420"]
+
+[tool.setuptools.package-data]
+x420 = ["py.typed"]

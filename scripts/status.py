@@ -87,7 +87,13 @@ CHECKS = [
 
     # ---- Shared implementation --------------------------------------------------------
     Check("SH1", "shared", "x420", "publishes conformance vectors",
-          "conformance/*.json", r"."),
+          "conformance/*.json", r"x420_conformance"),
+    Check("SH1b", "shared", "x420", "is installable as a package",
+          "pyproject.toml", r"name = \"x420\""),
+    # Vendoring is what let chadstash drift four changes behind, including duplicate
+    # resolution — its copy paid a re-uploader instead of the original.
+    Check("SH1c", "shared", "chadstash", "imports x420 rather than vendoring it",
+          "backend/app/x420/lineage.py", r"def resolve_splits", want=False),
     Check("SH2", "shared", "x420", "ships a TypeScript package",
           "package.json", r"@chad/x420"),
 
@@ -98,8 +104,10 @@ CHECKS = [
           "backend/app/models.py", r"phash"),
     Check("S2b", "phase 3", "chadstash", "has a provenance column",
           "backend/app/models.py", r"provenance"),
+    # Globs the package, not one file: chadstash put the derivation in app/x420/registry.py
+    # and called it from services.py, which a services-only check reported as missing work.
     Check("S2c", "phase 3", "chadstash", "computes x420_id at ingest",
-          "backend/app/services.py", r"x420_id"),
+          "backend/app/**/*.py", r"apply_x420_fields|content_digest"),
     Check("S3", "phase 3", "chadstash", "serves the record API",
           "backend/app/api/routes/*.py", r"x420"),
     Check("M4", "phase 3", "memecraft", "registers records with chadstash",

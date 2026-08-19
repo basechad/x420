@@ -30,6 +30,14 @@ if ! $PY scripts/selfcheck.py; then
     exit 1
 fi
 
+echo "conformance vectors:"
+if ! $PY scripts/check_conformance.py | tail -n 2; then
+    echo "Commit refused — the reference no longer reproduces its own conformance vectors."
+    echo "If the change was intentional, regenerate with scripts/gen_conformance.py and"
+    echo "review the diff: an unexpected vector change means the change was wider than intended."
+    exit 1
+fi
+
 # Advisory only. Failures here mean work is outstanding elsewhere, not that this commit is bad.
 if [ -f scripts/status.py ]; then
     echo "cross-repo status (advisory):"
