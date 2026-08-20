@@ -376,3 +376,67 @@ Deployment success is not the metric. Two questions matter after launch:
   but it allows a "lineage launch" that pays no ancestors. Post-hoc fix: the indexer already
   stores `splitter`, so it can read the deployed payees and compare against memecraft's splits,
   flagging mismatches.
+
+---
+
+## Verifying the loop end to end
+
+Everything above makes a lineage launch *safe*. This makes it **observed** — the difference
+between "the plumbing works" and "a creator who launched nothing received money", which is the
+only claim worth making.
+
+Nobody has completed this on any network. Run it on testnet first.
+
+### The hard part, up front
+
+**Creator fees escrow until graduation.** `FeeRouter` holds every collection per-position and
+`claim()` pays nothing until the pool price crosses `graduationTick`. With the default config
+that is **-218200 ≈ $69,420 market cap, roughly 4.3 ETH of net buy-in** (`script/Deploy.s.sol`).
+
+So the naive plan — launch, swap a bit, claim — pays out zero and looks broken. Two ways
+through:
+
+1. **Add a test config** with an easily-reached `graduationTick`. `ConfigRegistry.setConfig` is
+   owner-managed and keyed by `configId`, so a launch can reference a config whose milestone is
+   a few swaps away. **This is the sane route for a demo.**
+2. Actually move the price, which on mainnet means real money and on testnet means faucet ETH
+   in quantity.
+
+Whichever you pick, decide it *before* launching — `graduationTick` is frozen into the position
+at registration and cannot be changed afterwards.
+
+### Steps
+
+| # | Action | What proves it worked |
+|---|---|---|
+| 1 | Publish a meme in memecraft as creator **A** | record has `x420_id` and `content_sha256` |
+| 2 | Remix it as creator **B** | `parent_meme_id` set, provenance `attested` |
+| 3 | `GET /api/x420/{remix_id}/splits` | `payees` sum to `royalty_bps`, `signature` non-null, `signer_address` matches chadpad's config |
+| 4 | Launch from memecraft as a **third** wallet **C** | this is the case that only works if WO-7 landed — A and B must both appear |
+| 5 | Inspect the deployed splitter | `x420Content` non-zero; `payeeCount` = 3; `primaryCreator` = C |
+| 6 | Confirm `FeeRouter`'s stored `creator` | equals the splitter address, not C |
+| 7 | Swap until the pool crosses `graduationTick` | `FeeRouter.milestoneReached(positionId)` returns true |
+| 8 | `graduate(positionId)` then `claim(positionId)` | splitter's token balances go non-zero |
+| 9 | `splitter.release(token)` | **A and B receive funds they did not launch for** |
+
+**Step 4 must use a third wallet.** Launching your own meme resolves to yourself at 10000 and
+is indistinguishable from having no splitter — that is exactly why the launcher-share bug
+survived testing for as long as it did.
+
+**Step 9 is the whole thesis.** Everything before it is infrastructure.
+
+### Then check the accounting
+
+The commons ledger (SPEC §8.1.1) claims a meme's entitlement is reconstructible from chain data
+alone. Verify it once, here, while the data is small: read the splitter's `x420Content` and its
+`PaidOut` events, and confirm you can attribute each payout to the right meme without consulting
+any database.
+
+If that works on one launch it works on a thousand. If it does not, the holding tank has no
+ledger and the claim process in §8.1 is unimplementable.
+
+### Only then, mainnet
+
+Same nine steps, plus the exit criteria above. Expect the graduation threshold to be real money
+this time — which is an argument for proving the mechanism on testnet with a tuned config first,
+not for skipping it.
