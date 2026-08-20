@@ -269,7 +269,8 @@ Imported memes therefore carry attribution with a different role:
 `curator` rather than `creator` is load-bearing. It is honest about what is being
 compensated, and it means the record never asserts authorship it cannot support.
 
-**Provenance resolves as the weakest link in the chain.** An `attested` remix of an `unknown`
+**Provenance resolves as the weakest link in the chain** — `resolve_provenance()` in the
+reference. An `attested` remix of an `unknown`
 ancestor has `unknown` lineage overall, because the payout graph is only as trustworthy as
 its least-verified edge. Rank `unknown < asserted < attested` and take the minimum across the
 ancestry. Consumers gate on the *resolved* value, never on the record's own field.
@@ -772,7 +773,8 @@ absorb.
   ] }
 ```
 
-The ratio is configuration, not spec.
+The ratio is configuration, not spec. The commons address itself is recorded in `PUSH.md`
+§1b so it lives in one place; it is configuration in every consumer, never a constant.
 
 **The role is `commons`, never `creator` or `originator`.** That address did not make the
 meme, and a record must never assert authorship it cannot support — the same rule that stops

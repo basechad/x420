@@ -19,7 +19,21 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
 from x420.identity import meme_id, pixel_hash  # noqa: E402
-from x420.lineage import Meme, resolve_launch_splits, resolve_splits  # noqa: E402
+from x420.lineage import (  # noqa: E402
+    LineageCycle,
+    LineageTooDeep,
+    Meme,
+    UnknownMeme,
+    resolve_launch_splits,
+    resolve_provenance,
+    resolve_splits,
+)
+
+ERRORS = {
+    "LineageCycle": LineageCycle,
+    "LineageTooDeep": LineageTooDeep,
+    "UnknownMeme": UnknownMeme,
+}
 
 failures: list[str] = []
 
@@ -69,7 +83,22 @@ def main() -> int:
         compare("launch", case["name"], case["expected"],
                 resolve_launch_splits(case["meme_id"], store, case["launcher"]))
 
-    total = sum(len(data[k]) for k in ("identity", "pixel_hash", "splits", "launch_splits"))
+    for case in data.get("provenance", []):
+        store = load_store(case["store"])
+        compare("provenance", case["name"], case["expected"],
+                resolve_provenance(case["meme_id"], store).value)
+
+    for case in data.get("errors", []):
+        store = load_store(case["store"])
+        want = case["expected_error"]
+        try:
+            resolve_splits(case["meme_id"], store)
+            compare("errors", case["name"], want, "no error raised")
+        except tuple(ERRORS.values()) as exc:
+            compare("errors", case["name"], want, type(exc).__name__)
+
+    total = sum(len(data.get(k, [])) for k in
+                ("identity", "pixel_hash", "splits", "launch_splits", "provenance", "errors"))
     print()
     if failures:
         print(f"  {len(failures)} of {total} vectors failed — this implementation has diverged\n")

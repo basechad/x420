@@ -1,0 +1,67 @@
+{
+  "count": 4,
+  "cases": [
+    {
+      "name": "two generations",
+      "recipients": [
+        "0xaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "0xbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+        "0xffffffffffffffffffffffffffffffffffffffff"
+      ],
+      "bps": [
+        400,
+        1600,
+        8000
+      ],
+      "total_bps": 10000
+    },
+    {
+      "name": "three generations",
+      "recipients": [
+        "0xaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "0xbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+        "0xcccccccccccccccccccccccccccccccccccccccc",
+        "0xffffffffffffffffffffffffffffffffffffffff"
+      ],
+      "bps": [
+        80,
+        320,
+        1600,
+        8000
+      ],
+      "total_bps": 10000
+    },
+    {
+      "name": "multi-payee under a carve",
+      "recipients": [
+        "0xaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "0xbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+        "0xcccccccccccccccccccccccccccccccccccccccc",
+        "0xffffffffffffffffffffffffffffffffffffffff"
+      ],
+      "bps": [
+        2800,
+        900,
+        300,
+        6000
+      ],
+      "total_bps": 10000
+    },
+    {
+      "name": "two parents at different rates",
+      "recipients": [
+        "0xaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "0xbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+        "0xcccccccccccccccccccccccccccccccccccccccc",
+        "0xffffffffffffffffffffffffffffffffffffffff"
+      ],
+      "bps": [
+        750,
+        150,
+        2100,
+        7000
+      ],
+      "total_bps": 10000
+    }
+  ]
+}

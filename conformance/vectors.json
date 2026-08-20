@@ -545,6 +545,169 @@
         "0xaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa": 2000,
         "0xcccccccccccccccccccccccccccccccccccccccc": 8000
       }
+    },
+    {
+      "name": "two parents carve independently at their own rates",
+      "why": "each ancestor's own royalty_bps applies; they do not share one carve",
+      "store": [
+        {
+          "x420": "0.1",
+          "id": "x420:00000000000000000000000000000020",
+          "content": {
+            "uri": "u",
+            "sha256": "0000000000000000000000000000000000000000000000000000000000000020",
+            "media_type": "image/png"
+          },
+          "parents": [],
+          "attribution": [
+            {
+              "address": "0xaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+              "role": "creator",
+              "share_bps": 10000
+            }
+          ],
+          "license": {
+            "id": "l",
+            "derivatives": true,
+            "royalty_bps": 2500
+          },
+          "provenance": "attested"
+        },
+        {
+          "x420": "0.1",
+          "id": "x420:00000000000000000000000000000021",
+          "content": {
+            "uri": "u",
+            "sha256": "0000000000000000000000000000000000000000000000000000000000000021",
+            "media_type": "image/png"
+          },
+          "parents": [],
+          "attribution": [
+            {
+              "address": "0xbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+              "role": "creator",
+              "share_bps": 10000
+            }
+          ],
+          "license": {
+            "id": "l",
+            "derivatives": true,
+            "royalty_bps": 500
+          },
+          "provenance": "attested"
+        },
+        {
+          "x420": "0.1",
+          "id": "x420:00000000000000000000000000000022",
+          "content": {
+            "uri": "u",
+            "sha256": "0000000000000000000000000000000000000000000000000000000000000022",
+            "media_type": "image/png"
+          },
+          "parents": [
+            {
+              "id": "x420:00000000000000000000000000000020",
+              "relation": "remix"
+            },
+            {
+              "id": "x420:00000000000000000000000000000021",
+              "relation": "template"
+            }
+          ],
+          "attribution": [
+            {
+              "address": "0xcccccccccccccccccccccccccccccccccccccccc",
+              "role": "creator",
+              "share_bps": 10000
+            }
+          ],
+          "license": {
+            "id": "l",
+            "derivatives": true,
+            "royalty_bps": 3000
+          },
+          "provenance": "attested"
+        }
+      ],
+      "meme_id": "x420:00000000000000000000000000000022",
+      "expected": {
+        "0xaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa": 2500,
+        "0xbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb": 500,
+        "0xcccccccccccccccccccccccccccccccccccccccc": 7000
+      }
+    },
+    {
+      "name": "multi-payee attribution under a carve",
+      "why": "the parent takes its rate off the top; the remainder divides by share_bps",
+      "store": [
+        {
+          "x420": "0.1",
+          "id": "x420:00000000000000000000000000000020",
+          "content": {
+            "uri": "u",
+            "sha256": "0000000000000000000000000000000000000000000000000000000000000020",
+            "media_type": "image/png"
+          },
+          "parents": [],
+          "attribution": [
+            {
+              "address": "0xaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+              "role": "creator",
+              "share_bps": 10000
+            }
+          ],
+          "license": {
+            "id": "l",
+            "derivatives": true,
+            "royalty_bps": 2500
+          },
+          "provenance": "attested"
+        },
+        {
+          "x420": "0.1",
+          "id": "x420:00000000000000000000000000000023",
+          "content": {
+            "uri": "u",
+            "sha256": "0000000000000000000000000000000000000000000000000000000000000023",
+            "media_type": "image/png"
+          },
+          "parents": [
+            {
+              "id": "x420:00000000000000000000000000000020",
+              "relation": "remix"
+            }
+          ],
+          "attribution": [
+            {
+              "address": "0xaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+              "role": "creator",
+              "share_bps": 6000
+            },
+            {
+              "address": "0xbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+              "role": "editor",
+              "share_bps": 3000
+            },
+            {
+              "address": "0xcccccccccccccccccccccccccccccccccccccccc",
+              "role": "letterer",
+              "share_bps": 1000
+            }
+          ],
+          "license": {
+            "id": "l",
+            "derivatives": true,
+            "royalty_bps": 4000
+          },
+          "provenance": "attested"
+        }
+      ],
+      "meme_id": "x420:00000000000000000000000000000023",
+      "expected": {
+        "0xaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa": 7000,
+        "0xbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb": 2250,
+        "0xcccccccccccccccccccccccccccccccccccccccc": 750
+      }
     }
   ],
   "launch_splits": [
@@ -953,6 +1116,399 @@
         "0xcccccccccccccccccccccccccccccccccccccccc": 1600,
         "0xffffffffffffffffffffffffffffffffffffffff": 8000
       }
+    }
+  ],
+  "provenance": [
+    {
+      "name": "weakest link wins across the ancestry",
+      "why": "an attested remix of an unknown ancestor is unknown overall",
+      "store": [
+        {
+          "x420": "0.1",
+          "id": "x420:00000000000000000000000000000030",
+          "content": {
+            "uri": "u",
+            "sha256": "0000000000000000000000000000000000000000000000000000000000000030",
+            "media_type": "image/png"
+          },
+          "parents": [],
+          "attribution": [
+            {
+              "address": "0xaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+              "role": "creator",
+              "share_bps": 10000
+            }
+          ],
+          "license": {
+            "id": "l",
+            "derivatives": true,
+            "royalty_bps": 2000
+          },
+          "provenance": "unknown"
+        },
+        {
+          "x420": "0.1",
+          "id": "x420:00000000000000000000000000000031",
+          "content": {
+            "uri": "u",
+            "sha256": "0000000000000000000000000000000000000000000000000000000000000031",
+            "media_type": "image/png"
+          },
+          "parents": [
+            {
+              "id": "x420:00000000000000000000000000000030",
+              "relation": "remix"
+            }
+          ],
+          "attribution": [
+            {
+              "address": "0xbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+              "role": "creator",
+              "share_bps": 10000
+            }
+          ],
+          "license": {
+            "id": "l",
+            "derivatives": true,
+            "royalty_bps": 2000
+          },
+          "provenance": "attested"
+        },
+        {
+          "x420": "0.1",
+          "id": "x420:00000000000000000000000000000032",
+          "content": {
+            "uri": "u",
+            "sha256": "0000000000000000000000000000000000000000000000000000000000000032",
+            "media_type": "image/png"
+          },
+          "parents": [
+            {
+              "id": "x420:00000000000000000000000000000031",
+              "relation": "remix"
+            }
+          ],
+          "attribution": [
+            {
+              "address": "0xcccccccccccccccccccccccccccccccccccccccc",
+              "role": "creator",
+              "share_bps": 10000
+            }
+          ],
+          "license": {
+            "id": "l",
+            "derivatives": true,
+            "royalty_bps": 2000
+          },
+          "provenance": "attested"
+        }
+      ],
+      "meme_id": "x420:00000000000000000000000000000032",
+      "expected": "unknown"
+    },
+    {
+      "name": "a fully attested chain stays attested",
+      "why": "the rule only ever weakens, never strengthens",
+      "store": [
+        {
+          "x420": "0.1",
+          "id": "x420:00000000000000000000000000000001",
+          "content": {
+            "uri": "u",
+            "sha256": "0000000000000000000000000000000000000000000000000000000000000001",
+            "media_type": "image/png"
+          },
+          "parents": [],
+          "attribution": [
+            {
+              "address": "0xaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+              "role": "creator",
+              "share_bps": 10000
+            }
+          ],
+          "license": {
+            "id": "l",
+            "derivatives": true,
+            "royalty_bps": 2000
+          },
+          "provenance": "attested"
+        },
+        {
+          "x420": "0.1",
+          "id": "x420:00000000000000000000000000000002",
+          "content": {
+            "uri": "u",
+            "sha256": "0000000000000000000000000000000000000000000000000000000000000002",
+            "media_type": "image/png"
+          },
+          "parents": [
+            {
+              "id": "x420:00000000000000000000000000000001",
+              "relation": "remix"
+            }
+          ],
+          "attribution": [
+            {
+              "address": "0xbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+              "role": "creator",
+              "share_bps": 10000
+            }
+          ],
+          "license": {
+            "id": "l",
+            "derivatives": true,
+            "royalty_bps": 2000
+          },
+          "provenance": "attested"
+        },
+        {
+          "x420": "0.1",
+          "id": "x420:00000000000000000000000000000003",
+          "content": {
+            "uri": "u",
+            "sha256": "0000000000000000000000000000000000000000000000000000000000000003",
+            "media_type": "image/png"
+          },
+          "parents": [
+            {
+              "id": "x420:00000000000000000000000000000002",
+              "relation": "remix"
+            }
+          ],
+          "attribution": [
+            {
+              "address": "0xcccccccccccccccccccccccccccccccccccccccc",
+              "role": "creator",
+              "share_bps": 10000
+            }
+          ],
+          "license": {
+            "id": "l",
+            "derivatives": true,
+            "royalty_bps": 2000
+          },
+          "provenance": "attested"
+        }
+      ],
+      "meme_id": "x420:00000000000000000000000000000003",
+      "expected": "attested"
+    },
+    {
+      "name": "unknown outranks asserted downward",
+      "why": "ranking is unknown < asserted < attested",
+      "store": [
+        {
+          "x420": "0.1",
+          "id": "x420:00000000000000000000000000000030",
+          "content": {
+            "uri": "u",
+            "sha256": "0000000000000000000000000000000000000000000000000000000000000030",
+            "media_type": "image/png"
+          },
+          "parents": [],
+          "attribution": [
+            {
+              "address": "0xaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+              "role": "creator",
+              "share_bps": 10000
+            }
+          ],
+          "license": {
+            "id": "l",
+            "derivatives": true,
+            "royalty_bps": 2000
+          },
+          "provenance": "unknown"
+        },
+        {
+          "x420": "0.1",
+          "id": "x420:00000000000000000000000000000033",
+          "content": {
+            "uri": "u",
+            "sha256": "0000000000000000000000000000000000000000000000000000000000000033",
+            "media_type": "image/png"
+          },
+          "parents": [
+            {
+              "id": "x420:00000000000000000000000000000030",
+              "relation": "remix"
+            }
+          ],
+          "attribution": [
+            {
+              "address": "0xbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+              "role": "creator",
+              "share_bps": 10000
+            }
+          ],
+          "license": {
+            "id": "l",
+            "derivatives": true,
+            "royalty_bps": 2000
+          },
+          "provenance": "asserted"
+        }
+      ],
+      "meme_id": "x420:00000000000000000000000000000033",
+      "expected": "unknown"
+    }
+  ],
+  "errors": [
+    {
+      "name": "a four-node cycle is refused",
+      "why": "the guard must catch longer loops, not just A->B->A",
+      "store": [
+        {
+          "x420": "0.1",
+          "id": "x420:00000000000000000000000000000040",
+          "content": {
+            "uri": "u",
+            "sha256": "0000000000000000000000000000000000000000000000000000000000000040",
+            "media_type": "image/png"
+          },
+          "parents": [
+            {
+              "id": "x420:00000000000000000000000000000041",
+              "relation": "remix"
+            }
+          ],
+          "attribution": [
+            {
+              "address": "0xaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+              "role": "creator",
+              "share_bps": 10000
+            }
+          ],
+          "license": {
+            "id": "l",
+            "derivatives": true,
+            "royalty_bps": 2000
+          },
+          "provenance": "attested"
+        },
+        {
+          "x420": "0.1",
+          "id": "x420:00000000000000000000000000000041",
+          "content": {
+            "uri": "u",
+            "sha256": "0000000000000000000000000000000000000000000000000000000000000041",
+            "media_type": "image/png"
+          },
+          "parents": [
+            {
+              "id": "x420:00000000000000000000000000000042",
+              "relation": "remix"
+            }
+          ],
+          "attribution": [
+            {
+              "address": "0xaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+              "role": "creator",
+              "share_bps": 10000
+            }
+          ],
+          "license": {
+            "id": "l",
+            "derivatives": true,
+            "royalty_bps": 2000
+          },
+          "provenance": "attested"
+        },
+        {
+          "x420": "0.1",
+          "id": "x420:00000000000000000000000000000042",
+          "content": {
+            "uri": "u",
+            "sha256": "0000000000000000000000000000000000000000000000000000000000000042",
+            "media_type": "image/png"
+          },
+          "parents": [
+            {
+              "id": "x420:00000000000000000000000000000043",
+              "relation": "remix"
+            }
+          ],
+          "attribution": [
+            {
+              "address": "0xaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+              "role": "creator",
+              "share_bps": 10000
+            }
+          ],
+          "license": {
+            "id": "l",
+            "derivatives": true,
+            "royalty_bps": 2000
+          },
+          "provenance": "attested"
+        },
+        {
+          "x420": "0.1",
+          "id": "x420:00000000000000000000000000000043",
+          "content": {
+            "uri": "u",
+            "sha256": "0000000000000000000000000000000000000000000000000000000000000043",
+            "media_type": "image/png"
+          },
+          "parents": [
+            {
+              "id": "x420:00000000000000000000000000000040",
+              "relation": "remix"
+            }
+          ],
+          "attribution": [
+            {
+              "address": "0xaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+              "role": "creator",
+              "share_bps": 10000
+            }
+          ],
+          "license": {
+            "id": "l",
+            "derivatives": true,
+            "royalty_bps": 2000
+          },
+          "provenance": "attested"
+        }
+      ],
+      "meme_id": "x420:00000000000000000000000000000040",
+      "expected_error": "LineageCycle"
+    },
+    {
+      "name": "a missing ancestor is refused",
+      "why": "guessing at an absent parent would price an incomplete lineage",
+      "store": [
+        {
+          "x420": "0.1",
+          "id": "x420:00000000000000000000000000000050",
+          "content": {
+            "uri": "u",
+            "sha256": "0000000000000000000000000000000000000000000000000000000000000050",
+            "media_type": "image/png"
+          },
+          "parents": [
+            {
+              "id": "x420:00000000000000000000000000000099",
+              "relation": "remix"
+            }
+          ],
+          "attribution": [
+            {
+              "address": "0xaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+              "role": "creator",
+              "share_bps": 10000
+            }
+          ],
+          "license": {
+            "id": "l",
+            "derivatives": true,
+            "royalty_bps": 0
+          },
+          "provenance": "attested"
+        }
+      ],
+      "meme_id": "x420:00000000000000000000000000000050",
+      "expected_error": "UnknownMeme"
     }
   ]
 }

@@ -297,6 +297,21 @@ Vercel specifics:
 - **Vercel env is not a KMS.** Anyone with project access can read that key. Acceptable at this
   stage, but it now authorises real payouts — know that is the posture.
 
+### 1b. Ecosystem addresses
+
+| Purpose | Address | Decided |
+|---|---|---|
+| **Commons holding** (SPEC §8.1) | `0x3C433a59E5C380E8f0dc5E23fc1ae1CA9Ce8b50B` | 2026-08-18 |
+
+The commons address receives the ancestral share of an `unknown`-provenance meme, held
+claimable against a later verified creator. It is **configuration in every consumer, not a
+constant** — recorded here so the value lives in one place rather than being rediscovered from
+whichever repo happened to write it down.
+
+Its balance is attributable per meme without any extra bookkeeping:
+`LineageSplitter.x420Content` says which meme each splitter is for, and its `PaidOut` events
+say what reached this address. See SPEC §8.1.1.
+
 ### 2. Pre-flight
 
 One call verifies the three things that otherwise fail silently — key loaded, address matching,

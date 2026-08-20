@@ -96,6 +96,8 @@ CHECKS = [
           "backend/app/x420/lineage.py", r"def resolve_splits", want=False),
     Check("SH2", "shared", "x420", "ships a TypeScript package",
           "package.json", r"@chad/x420"),
+    Check("SH3", "shared", "chadpad", "tests the python->solidity handoff",
+          "packages/contracts/test/X420Handoff.t.sol", r"resolvedSplitsDeploy"),
 
     # ---- Phase 3: registry ------------------------------------------------------------
     Check("S1", "phase 3", "chadstash", "has an x420_id column",
@@ -159,6 +161,16 @@ def evaluate(check: Check) -> tuple[str, str]:
     return (FAIL, f"still present in {hits[0].name}") if hits else (PASS, "")
 
 
+def fixture_drift() -> str | None:
+    """The Solidity handoff fixture is generated here and vendored into chadpad, because
+    Foundry sandboxes reads to its own project. Two copies drift, so compare them."""
+    src = REPOS["x420"] / "conformance" / "solidity_fixtures.json"
+    dst = REPOS["chadpad"] / "packages/contracts/test/fixtures/x420_splits.json"
+    if not src.is_file() or not dst.is_file():
+        return "one copy is missing"
+    return None if src.read_text() == dst.read_text() else "chadpad's copy is stale"
+
+
 def repo_head(root: Path) -> str:
     """Short SHA and subject of the checked-out commit, for spotting a stale path.
 
@@ -214,6 +226,11 @@ def main() -> int:
             failed_blockers += 1
             if check.hint:
                 print(f"        {' ' * 4} └─ {check.hint}")
+
+    drift = fixture_drift()
+    if drift and not args.blockers:
+        print(f"\n  !! solidity handoff fixture: {drift}")
+        print("     regenerate with scripts/gen_conformance.py, then copy into chadpad")
 
     done = sum(1 for _, s, _ in results if s == PASS)
     print(f"\n  {done}/{len(results)} checks passing")

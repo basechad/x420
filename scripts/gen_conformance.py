@@ -25,9 +25,13 @@ from x420.identity import meme_id, pixel_hash  # noqa: E402
 from x420.lineage import (  # noqa: E402
     Content,
     License,
+    LineageCycle,
+    LineageTooDeep,
     Meme,
     Parent,
+    UnknownMeme,
     resolve_launch_splits,
+    resolve_provenance,
     resolve_splits,
 )
 
@@ -119,6 +123,81 @@ split_case("remixing a copy cannot launder away the royalty",
            "the carve rate resolves canonically, so a zeroed duplicate does not strip it",
            dupes, via_copy.id)
 
+# Two independent parents at DIFFERENT rates. Every other vector has at most one parent, so
+# the loop over `meme.parents` was never exercised with more than one entry.
+p_rich = rec(20, payees=[(A, "creator", 10000)], roy=2500)
+p_lean = rec(21, payees=[(B, "creator", 10000)], roy=500)
+# Non-zero own-royalty so this is also usable as a LAUNCH fixture: resolve_launch_splits
+# reads the launched meme's own rate to size the lineage pool.
+mashup = rec(22, parents=[(20, "remix"), (21, "template")],
+             payees=[(C, "creator", 10000)], roy=3000)
+multi = {m.id: m for m in (p_rich, p_lean, mashup)}
+split_case("two parents carve independently at their own rates",
+           "each ancestor's own royalty_bps applies; they do not share one carve",
+           multi, mashup.id)
+
+# A meme whose own attribution splits several ways, under an ancestral carve.
+shared = rec(23, parents=[(20, "remix")],
+             payees=[(A, "creator", 6000), (B, "editor", 3000), (C, "letterer", 1000)],
+             roy=4000)
+split_case("multi-payee attribution under a carve",
+           "the parent takes its rate off the top; the remainder divides by share_bps",
+           {p_rich.id: p_rich, shared.id: shared}, shared.id)
+
+# --- provenance -----------------------------------------------------------------------------
+
+provenance_cases = []
+
+
+def provenance_case(name, why, store, meme):
+    provenance_cases.append({
+        "name": name, "why": why, "store": dump(store), "meme_id": meme,
+        "expected": resolve_provenance(meme, store).value,
+    })
+
+
+pv_unknown = rec(30, payees=[(A, "creator", 10000)], roy=2000, provenance="unknown")
+pv_mid = rec(31, parents=[(30, "remix")], payees=[(B, "creator", 10000)], roy=2000)
+pv_top = rec(32, parents=[(31, "remix")], payees=[(C, "creator", 10000)], roy=2000)
+pv = {m.id: m for m in (pv_unknown, pv_mid, pv_top)}
+provenance_case("weakest link wins across the ancestry",
+                "an attested remix of an unknown ancestor is unknown overall",
+                pv, pv_top.id)
+provenance_case("a fully attested chain stays attested",
+                "the rule only ever weakens, never strengthens", chain, deep.id)
+
+pv_asserted = rec(33, parents=[(30, "remix")], payees=[(B, "creator", 10000)],
+                  roy=2000, provenance="asserted")
+provenance_case("unknown outranks asserted downward",
+                "ranking is unknown < asserted < attested",
+                {pv_unknown.id: pv_unknown, pv_asserted.id: pv_asserted}, pv_asserted.id)
+
+# --- refusals -------------------------------------------------------------------------------
+
+error_cases = []
+
+
+def error_case(name, why, store, meme, expected):
+    error_cases.append({"name": name, "why": why, "store": dump(store),
+                        "meme_id": meme, "expected_error": expected})
+
+
+# A four-node cycle: the guard was only ever tested on a two-node loop.
+cyc = {}
+for i in range(40, 44):
+    nxt = 40 if i == 43 else i + 1
+    cyc["x420:" + f"{i:032d}"] = rec(i, parents=[(nxt, "remix")],
+                                     payees=[(A, "creator", 10000)], roy=2000)
+error_case("a four-node cycle is refused",
+           "the guard must catch longer loops, not just A->B->A",
+           cyc, "x420:" + f"{40:032d}", "LineageCycle")
+
+# A record naming a parent that is not in the store.
+orphan = rec(50, parents=[(99, "remix")], payees=[(A, "creator", 10000)])
+error_case("a missing ancestor is refused",
+           "guessing at an absent parent would price an incomplete lineage",
+           {orphan.id: orphan}, orphan.id, "UnknownMeme")
+
 # --- launches -----------------------------------------------------------------------------
 
 launch_case("launcher keeps 10000 minus the royalty",
@@ -168,6 +247,8 @@ out = {
     "pixel_hash": pixel_cases,
     "splits": split_cases,
     "launch_splits": launch_cases,
+    "provenance": provenance_cases,
+    "errors": error_cases,
 }
 
 path = Path(__file__).resolve().parent.parent / "conformance" / "vectors.json"
@@ -175,4 +256,32 @@ path.parent.mkdir(exist_ok=True)
 path.write_text(json.dumps(out, indent=2, sort_keys=False) + "\n")
 print(f"wrote {path.relative_to(Path.cwd())}")
 print(f"  identity {len(identity_cases)} · pixel_hash {len(pixel_cases)} · "
-      f"splits {len(split_cases)} · launch_splits {len(launch_cases)}")
+      f"splits {len(split_cases)} · launch {len(launch_cases)} · "
+      f"provenance {len(provenance_cases)} · errors {len(error_cases)}")
+
+# --- Solidity handoff -----------------------------------------------------------------------
+# The boundary where Python's arithmetic becomes an immutable on-chain payee list had no test
+# on either side. This emits a flat fixture a Foundry test reads directly, so a resolved split
+# is proven to satisfy LineageSplitter's constructor rather than assumed to.
+solidity = []
+for _label, _store, _meme in [
+    ("two generations", chain, remix.id),
+    ("three generations", chain, deep.id),
+    ("multi-payee under a carve", {p_rich.id: p_rich, shared.id: shared}, shared.id),
+    ("two parents at different rates", multi, mashup.id),
+]:
+    _resolved = resolve_launch_splits(_meme, _store, LAUNCHER)
+    _sorted = sorted(_resolved.items())   # ascending by address, the canonical wire order
+    # Parallel arrays rather than an array of objects: Foundry's JSON path has no wildcard,
+    # so `.cases[i].recipients` must be a plain array it can parse in one call.
+    solidity.append({
+        "name": _label,
+        "recipients": [a for a, _ in _sorted],
+        "bps": [b for _, b in _sorted],
+        "total_bps": sum(_resolved.values()),
+    })
+
+sol_path = path.parent / "solidity_fixtures.json"
+# `count` is explicit because Foundry's JSON path cannot span the outer array.
+sol_path.write_text(json.dumps({"count": len(solidity), "cases": solidity}, indent=2) + "\n")
+print(f"wrote {sol_path.relative_to(Path.cwd())}  ({len(solidity)} constructor fixtures)")

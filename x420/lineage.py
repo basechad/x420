@@ -272,6 +272,51 @@ def resolve_launch_splits(
     return {address: bps for address, bps in payouts.items() if bps}
 
 
+_PROVENANCE_RANK = {
+    Provenance.UNKNOWN: 0,
+    Provenance.ASSERTED: 1,
+    Provenance.ATTESTED: 2,
+}
+
+
+def resolve_provenance(meme_id: str, store: dict[str, Meme]) -> Provenance:
+    """The weakest provenance anywhere in a meme's ancestry (SPEC §3.1).
+
+    An `attested` remix of an `unknown` ancestor has `unknown` lineage overall: a payout graph
+    is only as trustworthy as its least-verified edge. Consumers gate on this resolved value,
+    never on the record's own field — chadpad refuses to deploy an immutable splitter against
+    anything weaker than `attested`.
+
+    Follows `duplicate_of` for the same reason `resolve_splits` does: a duplicate is the same
+    work, so it inherits the canonical record's ancestry rather than asserting its own.
+    """
+    weakest = Provenance.ATTESTED
+    seen: set[str] = set()
+    frontier = deque([meme_id])
+
+    while frontier:
+        current = frontier.popleft()
+        if current in seen:
+            continue
+        if len(seen) >= MAX_LINEAGE_DEPTH:
+            raise LineageTooDeep(f"ancestry deeper than {MAX_LINEAGE_DEPTH} at {current}")
+        seen.add(current)
+
+        meme = store.get(current)
+        if meme is None:
+            raise UnknownMeme(current)
+
+        if meme.duplicate_of is not None:
+            frontier.append(meme.duplicate_of)
+            continue
+
+        if _PROVENANCE_RANK[meme.provenance] < _PROVENANCE_RANK[weakest]:
+            weakest = meme.provenance
+        frontier.extend(p.id for p in meme.parents)
+
+    return weakest
+
+
 def canonical_id(meme_id: str, store: dict[str, Meme]) -> str:
     """Follow `duplicate_of` to the record that actually owns this work.
 
