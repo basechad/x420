@@ -59,15 +59,12 @@ Agree these before either repo writes code. Both were the source of prior churn.
 
 `x420_id` remains `"x420:" + content_sha256[:32]`, which gives a free cross-check.
 
-### 2. Splits response signature — **as built** (memecraft `28e821e`)
+### 2. Splits response signature — **v2, agreed 2026-08-18**
 
-This section previously carried a proposed schema. memecraft implemented a different one and
-**the implementation is authoritative** — it corrected two real errors in the proposal. Do not
-resurrect the earlier version.
+**This is the canonical struct. Both sides build against exactly this.**
 
 ```ts
-// No chainId, no verifyingContract.
-const domain = { name: "x420", version: "1" };
+const domain = { name: "x420", version: "2" };   // bumped — see below
 
 const types = {
   Payee: [
@@ -77,6 +74,7 @@ const types = {
   X420Splits: [
     { name: "x420Id",        type: "string"  },
     { name: "contentSha256", type: "bytes32" },
+    { name: "royaltyBps",    type: "uint256" },   // NEW in v2
     { name: "totalBps",      type: "uint256" },
     { name: "provenance",    type: "string"  },
     { name: "payees",        type: "Payee[]" },
@@ -86,33 +84,58 @@ const types = {
 // primaryType: "X420Splits"   ·   TTL: 15 minutes
 ```
 
-**Two corrections the implementation made:**
+`royaltyBps` is the **canonical** meme's carve rate — the same value used for parent carves —
+placed beside `totalBps` because both are basis-point quantities. Name, type, and **position**
+are all load-bearing: EIP-712 hashes fields in declaration order, so any disagreement changes
+the type hash and fails every signature.
 
-1. **No `chainId` in the domain.** The proposal bound signatures to the launch chain, which
-   contradicts `SPEC.md §2.2` — an x420 id is deliberately chain-free so one meme has one
-   identity across every chain $CHAD launches on. Binding to a chain would have produced a
-   different signature per chain for the same meme.
-2. **A `Payee[]` struct array rather than parallel `address[]` / `uint16[]` arrays.** This
-   eliminates the length-mismatch and misalignment failure modes entirely, rather than
-   defending against them by convention.
+**Why it must be signed.** It now decides how a launch's fee stream divides between launcher
+and lineage (SPEC §3.5), so an unsigned value would let a tampered response move money.
+`content_uri` stays *outside* the signature because the bytes are verified against the signed
+`content_sha256`; a bare number has no equivalent recourse.
 
-**Response fields added** (nothing removed):
+#### This is a coordinated cutover — there IS a live consumer
+
+chadpad's verifier already exists and is committed (`e273da6`, `packages/web/lib/x420.ts:85`)
+with the v1 struct. Adding a field changes the type hash, so the two sides mismatch until both
+ship.
+
+**The mismatch fails closed**, which is what makes this safe: chadpad refuses a launch it
+cannot verify rather than proceeding on trust. So an imperfectly timed rollout costs
+availability — lineage launches refuse — not correctness. Ordinary launches are unaffected.
+
+**The domain version goes to `"2"`.** It changes the hash exactly as adding the field does, so
+it costs nothing extra, and it turns "every signature is mysteriously invalid" into a
+diagnosable version mismatch. chadpad should surface an unexpected domain version as its own
+error rather than a generic verification failure.
+
+Recovery, if a rollout goes wrong: unset `MEMECRAFT_API_BASE` on chadpad. Lineage resolution
+is skipped and launches proceed as ordinary EOA-creator launches with no lineage.
+
+#### v1, for reference
+
+v1 omitted `royaltyBps` and used `version: "1"`. It is superseded; do not build against it.
+Two corrections it already contained, both retained in v2:
+
+1. **No `chainId` in the domain** — an x420 id is chain-free (SPEC §2.2), so binding
+   signatures to a chain would give one meme a different signature per chain.
+2. **A `Payee[]` struct array** rather than parallel `address[]`/`uint16[]` arrays, which
+   removes the misalignment failure mode instead of defending against it by convention.
+
+**Response fields** (nothing removed in v2):
 
 | Field | Notes |
 |---|---|
 | `content_sha256` | 64 lowercase hex, no `0x` |
-| `payees` | **canonical order — ascending by address.** Verify against this array, not the `splits` map, whose key order is not guaranteed |
+| `royalty_bps` | **new in v2** — canonical meme's rate, inside the signature |
+| `content_uri` | canonical `ipfs://`; deliberately unsigned |
+| `payees` | **canonical order — ascending by address.** Verify against this, not the `splits` map |
 | `deadline` | unix seconds |
 | `signer_address` | the pinned signer |
 | `signature` | null when unsigned |
 
 **A response is unsigned when no content anchor exists**, rather than signing over a zero
-anchor. A null signature must therefore be treated as "not launchable," not as "skip
-verification."
-
-The signer key is separate from the mint-authorisation key, so an x420 key leak is not a mint
-leak. It is configuration (`MEMECRAFT_X420_SIGNER_PRIVATE_KEY`) and rotatable without a
-redeploy.
+anchor. Null means "not launchable", never "skip verification".
 
 ### 3. `content_uri` — the launch handoff
 
@@ -131,8 +154,9 @@ what the existing signature already permits: chadpad fetches the bytes, hashes t
 compares against the `content_sha256` that **is** signed. Matching bytes prove the artifact is
 the one the lineage was signed over, regardless of how or by whom it was served.
 
-**Verify the bytes, not the pointer.** That is the point of content addressing, and it means
-the EIP-712 struct — already implemented and verified on both sides — does not change.
+**Verify the bytes, not the pointer.** That is the point of content addressing, and it is why
+`content_uri` needed no struct change of its own. (`royaltyBps` did — see §2 — because a bare
+number has no equivalent way to be checked after the fact.)
 
 An `ipfs://` URI rather than a gateway URL, so the value cannot drift and chadpad is not
 coupled to memecraft's gateway choice.
