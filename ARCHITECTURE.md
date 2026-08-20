@@ -445,3 +445,75 @@ IPFS, and the `x420Content` anchor commits to those exact bytes. Copying them el
 introduces drift and breaks the verifiability in §12.1. chadpad should also fetch server-side
 rather than routing through its creator-signed image-upload path, which exists for a different
 purpose.
+
+---
+
+## 13. A more on-chain x420 — a direction, not a decision
+
+**Recorded so the reasoning survives. Nothing here should be built before the loop has run and
+a creator has actually been paid.** Every serious correction in this project came from
+implementation contact, and hardening a design into a contract before the economics are
+observed would freeze in whatever is still wrong.
+
+### The naive version fails for a reason already rejected
+
+Putting **records** on-chain means gas per publish. That reintroduces exactly the problem in
+§7: lineage is valuable in proportion to graph density, and taxing every node guarantees
+sparseness. It is the mint-gate being dismantled, rebuilt in a different place.
+
+So "all records on-chain" is out on grounds already accepted, not on new ones.
+
+### The version worth considering: verify, do not trust
+
+Today chadpad trusts memecraft's EIP-712 signature to decide who gets paid. That is the last
+trust assumption in the system — acceptable while both are operated by the same people, and
+untenable the moment a third party runs a registry or that signer key leaks.
+
+The alternative moves verification on-chain without moving storage there:
+
+1. A producer publishes a **merkle root** of its record set — one write, amortised over every
+   record it covers.
+2. At launch the caller supplies the lineage records plus inclusion proofs.
+3. The contract **verifies the proofs and resolves the splits itself.**
+
+No per-publish gas, no trusted signer, and gas paid only where value is realised — the same
+principle as taxing issuance rather than creation (§1).
+
+### Why this is more interesting than it first appears
+
+**It dissolves the drift problem rather than managing it.**
+
+The conformance vectors, the generator, the checker, the pre-commit hook, the cross-layer
+Foundry test and the vendored-fixture drift guard all exist for one reason: *there are three
+implementations of a single payout rule*. That apparatus is a workaround for having no
+authoritative implementation.
+
+On-chain resolution creates one. Python and TypeScript become **advisory** — UI previews,
+"here is what you would receive" — and a divergence becomes a cosmetic bug instead of a
+misrouted payment. chadstash's vendored copy paying re-uploaders would have been a wrong
+preview, not wrong money.
+
+### What it costs
+
+- **Real Solidity work.** Graph traversal, the dust rule with address tie-breaks, recursion
+  rewritten as iteration under explicit gas bounds. All tractable; none of it trivial.
+- **A second unaudited contract** beside one already deployed and unaudited.
+- **Heavier launches** — proof verification plus resolution. Cheap on Base, not free.
+- **Less adoptable.** §1.1 deliberately keeps application policy non-normative. Encoding the
+  reference economic model into a contract hardens exactly the layer that was left soft to make
+  the standard portable. A consumer who wants different economics could no longer use the
+  resolver, only the record format.
+
+That last point is the real tension: this trade buys internal correctness at the cost of
+external flexibility, and §1.1 argues the flexibility is where adoption comes from.
+
+### Why it is not urgent
+
+Nothing about it invalidates what is deployed. `LineageSplitter` still takes a payee list and
+still pays it out; only *how the list is arrived at* would change. It is a clean upgrade
+available at any time, which is precisely why it can wait until there is evidence about whether
+the trust assumption is load-bearing in practice.
+
+**Revisit after the first real payout**, alongside the claim-adjudication question in
+SPEC §8.1.4 — both are governance-shaped, and both get easier to answer with one launch of real
+data behind them.
