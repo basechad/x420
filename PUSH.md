@@ -59,12 +59,12 @@ Agree these before either repo writes code. Both were the source of prior churn.
 
 `x420_id` remains `"x420:" + content_sha256[:32]`, which gives a free cross-check.
 
-### 2. Splits response signature — **v2, agreed 2026-08-18**
+### 2. Splits response signature — **v3, ruled 2026-08-19**
 
-**This is the canonical struct. Both sides build against exactly this.**
+**Canonical. Both sides build against exactly this. chadpad: skip v2, go straight to v3.**
 
 ```ts
-const domain = { name: "x420", version: "2" };   // bumped — see below
+const domain = { name: "x420", version: "3" };
 
 const types = {
   Payee: [
@@ -74,7 +74,7 @@ const types = {
   X420Splits: [
     { name: "x420Id",        type: "string"  },
     { name: "contentSha256", type: "bytes32" },
-    { name: "royaltyBps",    type: "uint256" },   // NEW in v2
+    { name: "royaltyBps",    type: "uint256" },
     { name: "totalBps",      type: "uint256" },
     { name: "provenance",    type: "string"  },
     { name: "payees",        type: "Payee[]" },
@@ -84,58 +84,82 @@ const types = {
 // primaryType: "X420Splits"   ·   TTL: 15 minutes
 ```
 
-`royaltyBps` is the **canonical** meme's carve rate — the same value used for parent carves —
-placed beside `totalBps` because both are basis-point quantities. Name, type, and **position**
-are all load-bearing: EIP-712 hashes fields in declaration order, so any disagreement changes
-the type hash and fails every signature.
+The struct **shape** is unchanged from v2. What changed is what `payees` *contains*.
 
-**Why it must be signed.** It now decides how a launch's fee stream divides between launcher
-and lineage (SPEC §3.5), so an unsigned value would let a tampered response move money.
-`content_uri` stays *outside* the signature because the bytes are verified against the signed
-`content_sha256`; a bare number has no equivalent recourse.
+#### `payees` are resolved at the royalty budget, not at 10000
 
-#### This is a coordinated cutover — there IS a live consumer
+```
+payees   = resolve_splits(meme, budget_bps = royalty_bps)   // sums to royalty_bps
+totalBps = sum(payees)                                       // == royalty_bps
+```
 
-chadpad's verifier already exists and is committed (`e273da6`, `packages/web/lib/x420.ts:85`)
-with the v1 struct. Adding a field changes the type hash, so the two sides mismatch until both
-ship.
+chadpad then composes the launch by **addition only**:
 
-**The mismatch fails closed**, which is what makes this safe: chadpad refuses a launch it
-cannot verify rather than proceeding on trust. So an imperfectly timed rollout costs
-availability — lineage launches refuse — not correctness. Ordinary launches are unaffected.
+```
+launcher = 10000 - royaltyBps        // merged if the launcher is already a payee
+lineage  = payees, verbatim
+```
 
-**The domain version goes to `"2"`.** It changes the hash exactly as adding the field does, so
-it costs nothing extra, and it turns "every signature is mysteriously invalid" into a
-diagnosable version mismatch. chadpad should surface an unexpected domain version as its own
-error rather than a generic verification failure.
+**Why this, and not rescaling.** v2 signed payees at the full 10000 budget, leaving chadpad to
+scale them down to the royalty. Rescaling is not the same operation as resolving at the correct
+budget — dust is assigned once, at a different magnitude, and the results differ. Measured over
+400 randomised lineages: **370 of 400 disagreed** with the reference, by up to 2 bps.
 
-Recovery, if a rollout goes wrong: unset `MEMECRAFT_API_BASE` on chadpad. Lineage resolution
-is skipped and launches proceed as ordinary EOA-creator launches with no lineage.
+Under v3 the composition reproduces `resolve_launch_splits` **exactly — 0 of 400 mismatches**,
+because nobody divides anything twice.
 
-#### v1, for reference
+#### Why a version bump for a value change
 
-v1 omitted `royaltyBps` and used `version: "1"`. It is superseded; do not build against it.
-Two corrections it already contained, both retained in v2:
+The struct shape is identical, so a v2 verifier would happily accept a v3 response and read the
+numbers as something else entirely. A silent semantic change is worse than a breaking one.
+`version: "3"` makes it a diagnosable mismatch instead.
 
-1. **No `chainId` in the domain** — an x420 id is chain-free (SPEC §2.2), so binding
-   signatures to a chain would give one meme a different signature per chain.
-2. **A `Payee[]` struct array** rather than parallel `address[]`/`uint16[]` arrays, which
-   removes the misalignment failure mode instead of defending against it by convention.
+**chadpad has not shipped v2, so go straight to v3** — one cutover, not two, and no window in
+which rescaled (wrong) numbers reach an immutable splitter.
 
-**Response fields** (nothing removed in v2):
+#### The cutover
+
+memecraft is currently signing v2, so chadpad's v1 verifier is **refusing every lineage
+launch right now**. That is the designed behaviour: it fails closed, ordinary launches are
+untouched, and no wrong payee set can reach a splitter. It is an availability outage for the
+feature, not a correctness problem.
+
+Two things follow:
+
+- **Surface a domain-version mismatch as its own error.** "Signature failed verification" reads
+  as tampering; the truth is a rollout skew. This is safe to ship immediately and independently
+  of everything else.
+- **Recovery lever:** unset `MEMECRAFT_API_BASE` on chadpad and launches proceed as ordinary
+  EOA-creator launches with no lineage.
+
+#### Superseded
+
+**v1** — no `royaltyBps`, `version: "1"`.
+**v2** — added `royaltyBps` but signed `payees` at budget 10000, requiring rescaling. Shipped
+by memecraft, never consumed. Do not build against either.
+
+Two decisions from v1 are retained throughout:
+
+1. **No `chainId` in the domain** — an x420 id is chain-free (SPEC §2.2); binding to a chain
+   would give one meme a different signature per chain.
+2. **A `Payee[]` struct array** rather than parallel arrays, which removes the misalignment
+   failure mode instead of defending against it by convention.
+
+**Response fields:**
 
 | Field | Notes |
 |---|---|
 | `content_sha256` | 64 lowercase hex, no `0x` |
-| `royalty_bps` | **new in v2** — canonical meme's rate, inside the signature |
+| `royalty_bps` | canonical meme's rate, inside the signature |
+| `payees` | **resolved at `royalty_bps`**, canonical order — ascending by address |
+| `total_bps` | `sum(payees)` — equals `royalty_bps` |
 | `content_uri` | canonical `ipfs://`; deliberately unsigned |
-| `payees` | **canonical order — ascending by address.** Verify against this, not the `splits` map |
 | `deadline` | unix seconds |
 | `signer_address` | the pinned signer |
 | `signature` | null when unsigned |
 
-**A response is unsigned when no content anchor exists**, rather than signing over a zero
-anchor. Null means "not launchable", never "skip verification".
+**A response is unsigned when no content anchor exists.** Null means "not launchable", never
+"skip verification".
 
 ### 3. `content_uri` — the launch handoff
 

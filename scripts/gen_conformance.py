@@ -130,6 +130,20 @@ launch_case("a free-to-use meme leaves the launcher everything",
             "no lineage obligation means no splitter is needed at all",
             {free.id: free}, free.id, LAUNCHER)
 
+# The v3 wire contract: memecraft signs payees already resolved at the royalty budget, and a
+# consumer composes the launch by addition alone. v2 signed them at 10000 and left the consumer
+# rescaling, which disagreed with the reference in 370 of 400 randomised lineages.
+for _name, _store, _meme in [("two generations", chain, remix.id), ("three", chain, deep.id)]:
+    _roy = _store[_meme].license.royalty_bps
+    launch_cases.append({
+        "name": f"v3 wire composition — {_name}",
+        "why": "signed payees sum to royalty_bps; the launcher is added, never rescaled",
+        "store": dump(_store), "meme_id": _meme, "launcher": LAUNCHER,
+        "signed_payees_at_royalty_budget": resolve_splits(_meme, _store, budget_bps=_roy),
+        "royalty_bps": _roy,
+        "expected": resolve_launch_splits(_meme, _store, LAUNCHER),
+    })
+
 # --- identity -----------------------------------------------------------------------------
 
 identity_cases = [

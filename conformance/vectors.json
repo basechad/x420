@@ -757,6 +757,202 @@
       "expected": {
         "0xffffffffffffffffffffffffffffffffffffffff": 10000
       }
+    },
+    {
+      "name": "v3 wire composition \u2014 two generations",
+      "why": "signed payees sum to royalty_bps; the launcher is added, never rescaled",
+      "store": [
+        {
+          "x420": "0.1",
+          "id": "x420:00000000000000000000000000000001",
+          "content": {
+            "uri": "u",
+            "sha256": "0000000000000000000000000000000000000000000000000000000000000001",
+            "media_type": "image/png"
+          },
+          "parents": [],
+          "attribution": [
+            {
+              "address": "0xaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+              "role": "creator",
+              "share_bps": 10000
+            }
+          ],
+          "license": {
+            "id": "l",
+            "derivatives": true,
+            "royalty_bps": 2000
+          },
+          "provenance": "attested"
+        },
+        {
+          "x420": "0.1",
+          "id": "x420:00000000000000000000000000000002",
+          "content": {
+            "uri": "u",
+            "sha256": "0000000000000000000000000000000000000000000000000000000000000002",
+            "media_type": "image/png"
+          },
+          "parents": [
+            {
+              "id": "x420:00000000000000000000000000000001",
+              "relation": "remix"
+            }
+          ],
+          "attribution": [
+            {
+              "address": "0xbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+              "role": "creator",
+              "share_bps": 10000
+            }
+          ],
+          "license": {
+            "id": "l",
+            "derivatives": true,
+            "royalty_bps": 2000
+          },
+          "provenance": "attested"
+        },
+        {
+          "x420": "0.1",
+          "id": "x420:00000000000000000000000000000003",
+          "content": {
+            "uri": "u",
+            "sha256": "0000000000000000000000000000000000000000000000000000000000000003",
+            "media_type": "image/png"
+          },
+          "parents": [
+            {
+              "id": "x420:00000000000000000000000000000002",
+              "relation": "remix"
+            }
+          ],
+          "attribution": [
+            {
+              "address": "0xcccccccccccccccccccccccccccccccccccccccc",
+              "role": "creator",
+              "share_bps": 10000
+            }
+          ],
+          "license": {
+            "id": "l",
+            "derivatives": true,
+            "royalty_bps": 2000
+          },
+          "provenance": "attested"
+        }
+      ],
+      "meme_id": "x420:00000000000000000000000000000002",
+      "launcher": "0xffffffffffffffffffffffffffffffffffffffff",
+      "signed_payees_at_royalty_budget": {
+        "0xaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa": 400,
+        "0xbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb": 1600
+      },
+      "royalty_bps": 2000,
+      "expected": {
+        "0xaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa": 400,
+        "0xbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb": 1600,
+        "0xffffffffffffffffffffffffffffffffffffffff": 8000
+      }
+    },
+    {
+      "name": "v3 wire composition \u2014 three",
+      "why": "signed payees sum to royalty_bps; the launcher is added, never rescaled",
+      "store": [
+        {
+          "x420": "0.1",
+          "id": "x420:00000000000000000000000000000001",
+          "content": {
+            "uri": "u",
+            "sha256": "0000000000000000000000000000000000000000000000000000000000000001",
+            "media_type": "image/png"
+          },
+          "parents": [],
+          "attribution": [
+            {
+              "address": "0xaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+              "role": "creator",
+              "share_bps": 10000
+            }
+          ],
+          "license": {
+            "id": "l",
+            "derivatives": true,
+            "royalty_bps": 2000
+          },
+          "provenance": "attested"
+        },
+        {
+          "x420": "0.1",
+          "id": "x420:00000000000000000000000000000002",
+          "content": {
+            "uri": "u",
+            "sha256": "0000000000000000000000000000000000000000000000000000000000000002",
+            "media_type": "image/png"
+          },
+          "parents": [
+            {
+              "id": "x420:00000000000000000000000000000001",
+              "relation": "remix"
+            }
+          ],
+          "attribution": [
+            {
+              "address": "0xbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+              "role": "creator",
+              "share_bps": 10000
+            }
+          ],
+          "license": {
+            "id": "l",
+            "derivatives": true,
+            "royalty_bps": 2000
+          },
+          "provenance": "attested"
+        },
+        {
+          "x420": "0.1",
+          "id": "x420:00000000000000000000000000000003",
+          "content": {
+            "uri": "u",
+            "sha256": "0000000000000000000000000000000000000000000000000000000000000003",
+            "media_type": "image/png"
+          },
+          "parents": [
+            {
+              "id": "x420:00000000000000000000000000000002",
+              "relation": "remix"
+            }
+          ],
+          "attribution": [
+            {
+              "address": "0xcccccccccccccccccccccccccccccccccccccccc",
+              "role": "creator",
+              "share_bps": 10000
+            }
+          ],
+          "license": {
+            "id": "l",
+            "derivatives": true,
+            "royalty_bps": 2000
+          },
+          "provenance": "attested"
+        }
+      ],
+      "meme_id": "x420:00000000000000000000000000000003",
+      "launcher": "0xffffffffffffffffffffffffffffffffffffffff",
+      "signed_payees_at_royalty_budget": {
+        "0xaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa": 80,
+        "0xbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb": 320,
+        "0xcccccccccccccccccccccccccccccccccccccccc": 1600
+      },
+      "royalty_bps": 2000,
+      "expected": {
+        "0xaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa": 80,
+        "0xbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb": 320,
+        "0xcccccccccccccccccccccccccccccccccccccccc": 1600,
+        "0xffffffffffffffffffffffffffffffffffffffff": 8000
+      }
     }
   ]
 }
