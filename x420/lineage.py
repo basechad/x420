@@ -1,12 +1,24 @@
 from __future__ import annotations
 
-from collections import defaultdict
+from collections import defaultdict, deque
 from enum import StrEnum
 from typing import Annotated
 
 from pydantic import BaseModel, Field, StringConstraints
 
 BPS_TOTAL = 10_000
+
+# Resolution normally terminates on its own: each generation carves `royalty_bps` from the
+# remainder, so a distant ancestor's share reaches zero and `carve == 0` stops the walk. How
+# deep that goes is set by the RATE, not the chain length — 5000 bps stops after ~14
+# generations, 9900 after ~517. Above roughly 9990 the natural bound exceeds Python's stack,
+# and an attacker-supplied record could turn a request into a RecursionError, i.e. a 500.
+#
+# So the depth is capped explicitly and raises a defined error instead. 64 is well past the
+# point of usefulness: a linear chain yields at most one payee per generation, and
+# LineageSplitter accepts only 32, so anything deeper is unlaunchable regardless. It also
+# matches the limit memecraft already applies in its splits route.
+MAX_LINEAGE_DEPTH = 64
 
 Address = Annotated[str, StringConstraints(pattern=r"^0x[a-fA-F0-9]{40}$")]
 Sha256 = Annotated[str, StringConstraints(pattern=r"^[a-f0-9]{64}$")]
@@ -141,6 +153,11 @@ class LineageCycle(ValueError):
     pass
 
 
+class LineageTooDeep(ValueError):
+    """Raised instead of exhausting the stack. A defined refusal beats a RecursionError,
+    which surfaces as a 500 on a request path rather than a rejected record."""
+
+
 def resolve_splits(
     meme_id: str,
     store: dict[str, Meme],
@@ -155,6 +172,10 @@ def resolve_splits(
     """
     if meme_id in _seen:
         raise LineageCycle(f"lineage cycle through {meme_id}")
+    # `_seen` accumulates along one path rather than across the whole graph, so its size is
+    # the current depth even when the ancestry branches.
+    if len(_seen) >= MAX_LINEAGE_DEPTH:
+        raise LineageTooDeep(f"ancestry deeper than {MAX_LINEAGE_DEPTH} at {meme_id}")
     try:
         meme = store[meme_id]
     except KeyError:
@@ -262,6 +283,10 @@ def canonical_id(meme_id: str, store: dict[str, Meme]) -> str:
     while True:
         if current in seen:
             raise LineageCycle(f"duplicate cycle through {current}")
+        # Bounded for the same reason as ancestry: a long chain of records each marked a
+        # duplicate of the last is cheap to author and costly to follow.
+        if len(seen) >= MAX_LINEAGE_DEPTH:
+            raise LineageTooDeep(f"duplicate chain longer than {MAX_LINEAGE_DEPTH}")
         seen.add(current)
         try:
             meme = store[current]
@@ -275,9 +300,11 @@ def canonical_id(meme_id: str, store: dict[str, Meme]) -> str:
 def ancestry(meme_id: str, store: dict[str, Meme]) -> list[str]:
     """Ancestor ids, nearest first, breadth-first, deduplicated."""
     seen: dict[str, None] = {}
-    frontier = [p.id for p in store[meme_id].parents]
+    # deque, not a list: list.pop(0) is O(n), which makes a breadth-first walk quadratic in
+    # the number of ancestors.
+    frontier = deque(p.id for p in store[meme_id].parents)
     while frontier:
-        current = frontier.pop(0)
+        current = frontier.popleft()
         if current in seen:
             continue
         seen[current] = None

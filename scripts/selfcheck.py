@@ -26,6 +26,8 @@ from x420.lineage import (  # noqa: E402
     Content,
     License,
     LineageCycle,
+    LineageTooDeep,
+    MAX_LINEAGE_DEPTH,
     Meme,
     Parent,
     Provenance,
@@ -181,6 +183,46 @@ check(
     "launching your own meme yields one merged payee",
     resolve_launch_splits(_orig_r.id, _rs, _a) == {_a: BPS_TOTAL},
 )
+
+# Resolution normally self-terminates once a carve rounds to zero, and how deep that goes is
+# set by the royalty RATE, not the chain length. Above ~9990 bps the natural bound exceeds
+# Python's stack, so an attacker-supplied record could turn a request into a RecursionError —
+# a 500 rather than a rejected record. The cap makes that a defined refusal.
+_deep, _prev = {}, None
+for _i in range(1, 200):
+    _m = Meme(
+        id="x420:" + f"{_i:032d}",
+        content=Content(uri="u", sha256=f"{_i:064d}", media_type="image/png"),
+        parents=[Parent(id=_prev, relation="remix")] if _prev else [],
+        attribution=[{"address": "0x" + f"{_i:040x}", "role": "creator", "share_bps": BPS_TOTAL}],
+        license=License(id="l", derivatives=True, royalty_bps=9999),
+    )
+    _deep[_m.id] = _m
+    _prev = _m.id
+try:
+    resolve_splits(_prev, _deep)
+    check("deep ancestry is refused, not a RecursionError", False, "no refusal")
+except LineageTooDeep:
+    check("deep ancestry is refused, not a RecursionError", True)
+except RecursionError:
+    check("deep ancestry is refused, not a RecursionError", False, "RecursionError")
+
+# A long duplicate chain is cheap to author and costly to follow, so it is bounded too.
+_dchain = {}
+for _i in range(1, MAX_LINEAGE_DEPTH + 20):
+    _nxt = "x420:" + f"{_i + 1:032d}" if _i < MAX_LINEAGE_DEPTH + 19 else None
+    _dchain["x420:" + f"{_i:032d}"] = Meme(
+        id="x420:" + f"{_i:032d}",
+        content=Content(uri="u", sha256=f"{_i:064d}", media_type="image/png"),
+        attribution=[{"address": _a, "role": "creator", "share_bps": BPS_TOTAL}],
+        license=License(id="l", derivatives=True, royalty_bps=0),
+        duplicate_of=_nxt,
+    )
+try:
+    canonical_id("x420:" + f"{1:032d}", _dchain)
+    check("long duplicate chains are refused", False, "no refusal")
+except LineageTooDeep:
+    check("long duplicate chains are refused", True)
 
 # --- provenance -------------------------------------------------------------------------
 
