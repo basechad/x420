@@ -94,8 +94,11 @@ CHECKS = [
     # resolution — its copy paid a re-uploader instead of the original.
     Check("SH1c", "shared", "chadstash", "imports x420 rather than vendoring it",
           "backend/app/x420/lineage.py", r"def resolve_splits", want=False),
-    Check("SH2", "shared", "x420", "ships a TypeScript package",
-          "package.json", r"@chad/x420"),
+    # Was "ships a TypeScript package". A package prevents drift; the vectors catch it, which
+    # is nearly all the value for a fraction of the work — and it was the *absence* of vector
+    # runs, not the vendoring, that let chadstash's copy go four changes behind unnoticed.
+    Check("SH2", "shared", "memecraft", "reproduces the conformance vectors",
+          "src/**/*x420*.test.ts", r"vectors|conformance"),
     Check("SH3", "shared", "chadpad", "tests the python->solidity handoff",
           "packages/contracts/test/X420Handoff.t.sol", r"resolvedSplitsDeploy"),
 
@@ -164,11 +167,21 @@ def evaluate(check: Check) -> tuple[str, str]:
 def fixture_drift() -> str | None:
     """The Solidity handoff fixture is generated here and vendored into chadpad, because
     Foundry sandboxes reads to its own project. Two copies drift, so compare them."""
-    src = REPOS["x420"] / "conformance" / "solidity_fixtures.json"
-    dst = REPOS["chadpad"] / "packages/contracts/test/fixtures/x420_splits.json"
-    if not src.is_file() or not dst.is_file():
-        return "one copy is missing"
-    return None if src.read_text() == dst.read_text() else "chadpad's copy is stale"
+    out = []
+    for label, src_rel, dst_repo, dst_rel in [
+        ("solidity fixture", "conformance/solidity_fixtures.json",
+         "chadpad", "packages/contracts/test/fixtures/x420_splits.json"),
+        ("conformance vectors", "conformance/vectors.json",
+         "memecraft", "src/lib/__fixtures__/x420_vectors.json"),
+    ]:
+        src, dst = REPOS["x420"] / src_rel, REPOS[dst_repo] / dst_rel
+        if not src.is_file():
+            out.append(f"{label}: source missing")
+        elif not dst.is_file():
+            out.append(f"{label}: not yet vendored into {dst_repo}")
+        elif src.read_text() != dst.read_text():
+            out.append(f"{label}: {dst_repo}'s copy is STALE")
+    return "; ".join(out) or None
 
 
 def repo_head(root: Path) -> str:
@@ -229,8 +242,8 @@ def main() -> int:
 
     drift = fixture_drift()
     if drift and not args.blockers:
-        print(f"\n  !! solidity handoff fixture: {drift}")
-        print("     regenerate with scripts/gen_conformance.py, then copy into chadpad")
+        print(f"\n  !! vendored fixtures — {drift}")
+        print("     regenerate with scripts/gen_conformance.py, then copy into the consumer")
 
     done = sum(1 for _, s, _ in results if s == PASS)
     print(f"\n  {done}/{len(results)} checks passing")
