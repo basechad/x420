@@ -8,7 +8,13 @@ from x402.http import HTTPFacilitatorClient
 from x402.http.middleware.fastapi import payment_middleware
 from x402.mechanisms.evm.exact import register_exact_evm_server
 
-from x420.lineage import BPS_TOTAL, ancestry, resolve_splits
+from x420.lineage import (
+    BPS_TOTAL,
+    ancestry,
+    canonical_id,
+    resolve_provenance,
+    resolve_splits,
+)
 from x420.store import MEMES
 
 PAY_TO = os.environ["X420_PAY_TO"]
@@ -67,11 +73,17 @@ async def meme(meme_id: str):
     if record is None:
         raise HTTPException(status_code=404, detail="unknown meme")
 
+    # Resolved rather than raw: a consumer needs the weakest-link provenance to gate on, and
+    # the canonical id because a duplicate's own fields describe the copy while its payouts
+    # describe the original.
     splits = resolve_splits(meme_id, MEMES)
+    canonical = canonical_id(meme_id, MEMES)
     return {
         **record.model_dump(),
         "resolved": {
             "ancestry": ancestry(meme_id, MEMES),
+            "provenance": resolve_provenance(meme_id, MEMES).value,
+            "canonical": canonical,
             "splits_bps": splits,
             "total_bps": BPS_TOTAL,
         },

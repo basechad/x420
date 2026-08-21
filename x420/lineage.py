@@ -343,7 +343,14 @@ def canonical_id(meme_id: str, store: dict[str, Meme]) -> str:
 
 
 def ancestry(meme_id: str, store: dict[str, Meme]) -> list[str]:
-    """Ancestor ids, nearest first, breadth-first, deduplicated."""
+    """Ancestor ids, nearest first, breadth-first, deduplicated.
+
+    Resolves through `duplicate_of` first, for the same reason `resolve_splits` does: a
+    duplicate is the same work, so its ancestry is the canonical record's. Reading the
+    duplicate's own (usually empty) `parents` would report no ancestors for a meme that
+    demonstrably pays some — the two functions must not disagree about who is upstream.
+    """
+    meme_id = canonical_id(meme_id, store)
     seen: dict[str, None] = {}
     # deque, not a list: list.pop(0) is O(n), which makes a breadth-first walk quadratic in
     # the number of ancestors.
