@@ -118,6 +118,14 @@ CHECKS = [
     Check("M4", "phase 3", "memecraft", "registers records with chadstash",
           "src/lib/*.ts", r"chadstash|CHADSTASH"),
 
+    # A chadstash meme opened in memecraft's canvas is mirrored so the new meme can point a
+    # real parent at it. Mirroring bails when the foreign record has more than one payee — and
+    # chadstash emits two the moment a curator registers a payout address. The handoff then
+    # returns ok:true with parentMemeId:null and the meme publishes as an attested ORIGINAL.
+    Check("X1", "integrity", "memecraft", "does not silently drop chadstash lineage",
+          "src/lib/x420-ancestor.ts", r"multiPayee|attribution\.length !== 1", want=False,
+          hint="mirror multi-payee records, or refuse the handoff — never publish as attested"),
+
     # ---- Phase 4 ----------------------------------------------------------------------
     Check("BR1", "phase 4", "chadbrain", "registers generated images",
           "**/*.py", r"x420"),
@@ -172,7 +180,7 @@ def fixture_drift() -> str | None:
         ("solidity fixture", "conformance/solidity_fixtures.json",
          "chadpad", "packages/contracts/test/fixtures/x420_splits.json"),
         ("conformance vectors", "conformance/vectors.json",
-         "memecraft", "src/lib/__fixtures__/x420_vectors.json"),
+         "memecraft", "src/lib/__fixtures__/x420-vectors.json"),
     ]:
         src, dst = REPOS["x420"] / src_rel, REPOS[dst_repo] / dst_rel
         if not src.is_file():
